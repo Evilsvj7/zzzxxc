@@ -158,6 +158,20 @@ local SCRIPT_LIB = {
 	{ name = "情云脚本中心", cat = "脚本中心", code = [[loadstring(utf8.char((function() return table.unpack({108,111,97,100,115,116,114,105,110,103,40,103,97,109,101,58,72,116,116,112,71,101,116,40,34,104,116,116,112,115,58,47,47,114,97,119,46,103,105,116,104,117,98,117,115,101,114,99,111,110,116,101,110,116,46,99,111,109,47,67,104,105,110,97,81,89,47,45,47,109,97,105,110,47,37,69,54,37,56,51,37,56,53,37,69,52,37,66,65,37,57,49,34,41,41,40,41})end)()))()]] },
 }
 
+local function SafeAdd(tab, method, cfg)
+	if not tab then return nil end
+	if type(tab[method]) ~= "function" then
+		warn("[G2R5x] WindUI 无此方法: " .. tostring(method))
+		return nil
+	end
+	local ok, r = pcall(function() return tab[method](tab, cfg) end)
+	if not ok then
+		warn("[G2R5x] " .. tostring(method) .. " 创建失败: " .. tostring(r))
+		return nil
+	end
+	return r
+end
+
 local function RunScript(entry)
 	Notify("G2R5x", "正在执行: " .. entry.name, 3)
 	local f, err = loadstring(entry.code)
@@ -195,10 +209,21 @@ local Window = WindUI:CreateWindow({
 	Theme = "Dark",
 })
 
+local function SafeTab(cfg)
+	local ok, tab = pcall(function() return Window:Tab(cfg) end)
+	if ok and tab then return tab end
+	warn("[G2R5x] Tab 创建失败(" .. tostring(cfg.Title) .. ")，尝试去掉图标: " .. tostring(tab))
+	local ok2, tab2 = pcall(function() return Window:Tab({ Title = cfg.Title }) end)
+	if ok2 and tab2 then return tab2 end
+	warn("[G2R5x] Tab 彻底失败: " .. tostring(cfg.Title))
+	return nil
+end
+
+
 --------------------------------------------------------------------------------
 -- 普通脚本
 --------------------------------------------------------------------------------
-local TabNormal = Window:Tab({ Title = "普通脚本", Icon = "scroll-text" })
+local TabNormal = SafeTab({ Title = "普通脚本", Icon = "scroll-text" })
 for _, e in ipairs(SCRIPT_LIB) do
 	if e.cat == "普通脚本" then
 		TabNormal:Button({
@@ -214,7 +239,7 @@ end
 --------------------------------------------------------------------------------
 -- 脚本中心
 --------------------------------------------------------------------------------
-local TabHub = Window:Tab({ Title = "脚本中心", Icon = "layout-grid" })
+local TabHub = SafeTab({ Title = "脚本中心", Icon = "layout-grid" })
 for _, e in ipairs(SCRIPT_LIB) do
 	if e.cat == "脚本中心" then
 		TabHub:Button({
@@ -230,7 +255,7 @@ end
 --------------------------------------------------------------------------------
 -- 本地玩家修改
 --------------------------------------------------------------------------------
-local TabLocal = Window:Tab({ Title = "本地玩家修改", Icon = "person-standing" })
+local TabLocal = SafeTab({ Title = "本地玩家修改", Icon = "person-standing" })
 
 local SPD_MODES = { "方式一 WalkSpeed", "方式二 力度推进", "方式三 坐标位移" }
 local JMP_MODES = { "方式一 JumpPower", "方式二 JumpHeight", "方式三 起跳推力" }
@@ -432,23 +457,35 @@ TabLocal:Toggle({
 	end,
 })
 
-TabLocal:Slider({
+SafeAdd(TabLocal, "Slider", {
 	Title = "移动速度",
+	Desc = "拖动调整",
+	Value = { Min = 16, Max = 300, Default = 16 },
+	Step = 1,
 	Range = { 16, 300 },
 	CurrentValue = 16,
 	Callback = function(val)
-		SpeedVal = val
-		if ModOn then DoSpeed() end
+		if type(val) == "number" then
+			SpeedVal = val
+			if ModOn then DoSpeed() end
+		end
 	end,
 })
 
-TabLocal:Dropdown({
+SafeAdd(TabLocal, "Dropdown", {
 	Title = "速度修改方式",
+	Desc = "改不动就换一种",
+	Values = SPD_MODES,
+	Value = SPD_MODES[1],
+	Multi = false,
+	AllowNone = false,
 	Options = SPD_MODES,
 	CurrentOption = SPD_MODES[1],
 	Callback = function(op)
+		local pick = op
+		if type(op) == "table" then pick = op[1] or op.Value end
 		for i, v in ipairs(SPD_MODES) do
-			if v == op then SpeedMode = i end
+			if v == pick then SpeedMode = i end
 		end
 		if ModOn then DoSpeed() end
 	end,
@@ -462,23 +499,35 @@ TabLocal:Toggle({
 	end,
 })
 
-TabLocal:Slider({
+SafeAdd(TabLocal, "Slider", {
 	Title = "跳跃高度",
+	Desc = "拖动调整",
+	Value = { Min = 10, Max = 400, Default = 50 },
+	Step = 1,
 	Range = { 10, 400 },
 	CurrentValue = 50,
 	Callback = function(val)
-		JumpVal = val
-		if ModOn then DoJump() end
+		if type(val) == "number" then
+			JumpVal = val
+			if ModOn then DoJump() end
+		end
 	end,
 })
 
-TabLocal:Dropdown({
+SafeAdd(TabLocal, "Dropdown", {
 	Title = "跳跃修改方式",
+	Desc = "改不动就换一种",
+	Values = JMP_MODES,
+	Value = JMP_MODES[1],
+	Multi = false,
+	AllowNone = false,
 	Options = JMP_MODES,
 	CurrentOption = JMP_MODES[1],
 	Callback = function(op)
+		local pick = op
+		if type(op) == "table" then pick = op[1] or op.Value end
 		for i, v in ipairs(JMP_MODES) do
-			if v == op then JumpMode = i end
+			if v == pick then JumpMode = i end
 		end
 		if ModOn then DoJump() end
 	end,
@@ -495,22 +544,17 @@ TabLocal:Toggle({
 --------------------------------------------------------------------------------
 -- 关于
 --------------------------------------------------------------------------------
-local TabAbout = Window:Tab({ Title = "关于", Icon = "info" })
+local TabAbout = SafeTab({ Title = "关于", Icon = "info" })
 
-TabAbout:Label({
-	Title = "关于作者",
-})
-TabAbout:Button({
+SafeAdd(TabAbout, "Section", { Title = "关于作者" })
+SafeAdd(TabAbout, "Paragraph", {
 	Title = "作者永远不会跑路，但作者有可能会被累死",
-	Desc = "点击左侧标题无效，此处仅为说明",
-	Callback = function() end,
+	Desc = "有时脚本中心里的脚本无法执行，请放心，那可能只是卡顿或该脚本失效。通知作者，作者会修复。",
 })
-TabAbout:Label({
-	Title = "有时脚本中心里的脚本无法执行，请放心，那可能只是卡顿或该脚本失效。通知作者，作者会修复。",
-})
-TabAbout:Button({
+SafeAdd(TabAbout, "Button", {
 	Title = "作者Q号: 2122119096",
 	Desc = "点击自动复制",
+	Icon = "copy",
 	Callback = function()
 		if CopyText("2122119096") then
 			Notify("复制成功", "作者Q号已复制到剪贴板", 4)
@@ -519,9 +563,10 @@ TabAbout:Button({
 		end
 	end,
 })
-TabAbout:Button({
+SafeAdd(TabAbout, "Button", {
 	Title = "该脚本交流群: 1081093229",
 	Desc = "点击自动复制",
+	Icon = "users",
 	Callback = function()
 		if CopyText("1081093229") then
 			Notify("复制成功", "交流群号已复制到剪贴板", 4)
@@ -531,88 +576,115 @@ TabAbout:Button({
 	end,
 })
 
-TabAbout:Label({
-	Title = "关于脚本",
+SafeAdd(TabAbout, "Section", { Title = "关于脚本" })
+SafeAdd(TabAbout, "Paragraph", {
+	Title = "更新说明",
+	Desc = "因为作者更新比较慢，来不及逐一查看某些脚本是否失效，这里请原谅。",
 })
-TabAbout:Label({
-	Title = "因为作者更新比较慢，来不及逐一查看某些脚本是否失效，这里请原谅。",
+SafeAdd(TabAbout, "Paragraph", {
+	Title = "⚠️ 概不负责 ⚠️",
+	Desc = "使用脚本本身已违反 Roblox 服务条款，如果被服务器封号，概不负责。",
 })
-TabAbout:Label({
-	Title = "⚠ 重点提醒",
+SafeAdd(TabAbout, "Paragraph", {
+	Title = "⚠️ 后果自负 ⚠️",
+	Desc = "因违反 Roblox 条款而被封号、回收账号等一切后果，均由使用者自行承担，概不负责。",
 })
-TabAbout:Button({
-	Title = "使用脚本本身已违反 Roblox 服务条款，如果被服务器封号，概不负责。",
-	Desc = "红色 = 严重提醒，请自行权衡风险",
-	Callback = function() end,
+SafeAdd(TabAbout, "Paragraph", {
+	Title = "⚠️ 风险自担 ⚠️",
+	Desc = "部分脚本可能含有检测或风险内容，执行前请自行判断，后果概不负责。",
 })
-TabAbout:Label({
-	Title = "⚠ 因违反 Roblox 条款而被封号、回收账号等一切后果，均由使用者自行承担，概不负责。",
-})
-TabAbout:Label({
-	Title = "⚠ 部分脚本可能含有检测或风险内容，执行前请自行判断，后果概不负责。",
+
+SafeAdd(TabAbout, "Section", { Title = "工具" })
+SafeAdd(TabAbout, "Button", {
+	Title = "重建搜索框",
+	Desc = "搜索框消失时点这里",
+	Icon = "search",
+	Callback = function()
+		local ok, err = pcall(BuildSearch)
+		if ok then
+			Notify("搜索框", "已重建", 4)
+		else
+			Notify("搜索框", "重建失败: " .. tostring(err):sub(1, 50), 5)
+		end
+	end,
 })
 
 --------------------------------------------------------------------------------
--- 搜索（原生面板，硬匹配脚本名）
+-- 搜索（顶部常驻 / 硬匹配脚本名 / 可重建）
 --------------------------------------------------------------------------------
-task.spawn(function()
-	local pg = LP:WaitForChild("PlayerGui", 10)
-	if not pg then return end
+local SearchGui = nil
+
+local function GetPlayerGui()
+	local pg = LP:FindFirstChild("PlayerGui")
+	if pg then return pg end
+	local ok, r = pcall(function() return LP:WaitForChild("PlayerGui", 10) end)
+	if ok and r then return r end
+	return nil
+end
+
+function BuildSearch()
+	pcall(function()
+		if SearchGui then SearchGui:Destroy() SearchGui = nil end
+	end)
+	local pg = GetPlayerGui()
+	if not pg then
+		warn("[G2R5x] 找不到 PlayerGui，搜索框未创建")
+		return false
+	end
+
 	local sg = Instance.new("ScreenGui")
 	sg.Name = "G2R5xSearch"
 	sg.ResetOnSpawn = false
 	sg.IgnoreGuiInset = true
-	sg.DisplayOrder = 9000
-
-	local openBtn = Instance.new("TextButton", sg)
-	openBtn.Size = UDim2.new(0, 42, 0, 42)
-	openBtn.Position = UDim2.new(0, 12, 0, 118)
-	openBtn.BackgroundColor3 = Color3.fromRGB(24, 24, 32)
-	openBtn.Text = "🔍"
-	openBtn.TextSize = 20
-	openBtn.TextColor3 = Color3.fromRGB(230, 230, 240)
-	openBtn.BorderSizePixel = 0
-	Instance.new("UICorner", openBtn).CornerRadius = UDim.new(0, 10)
+	sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	sg.DisplayOrder = 2147483647
 
 	local panel = Instance.new("Frame", sg)
-	panel.Size = UDim2.new(0, 300, 0, 46)
-	panel.Position = UDim2.new(0, 12, 0, 168)
-	panel.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+	panel.Name = "Panel"
+	panel.Size = UDim2.new(0, 380, 0, 42)
+	panel.Position = UDim2.new(0.5, -190, 0, 6)
+	panel.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
+	panel.BackgroundTransparency = 0.12
 	panel.BorderSizePixel = 0
-	panel.Visible = false
+	panel.Active = true
 	Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 10)
 
 	local box = Instance.new("TextBox", panel)
+	box.Name = "Box"
 	box.Size = UDim2.new(1, -16, 0, 30)
-	box.Position = UDim2.new(0, 8, 0, 8)
+	box.Position = UDim2.new(0, 8, 0, 6)
 	box.PlaceholderText = "搜索脚本名称（硬匹配）"
+	box.PlaceholderColor3 = Color3.fromRGB(140, 140, 160)
 	box.Text = ""
 	box.Font = Enum.Font.Gotham
 	box.TextSize = 15
 	box.TextColor3 = Color3.fromRGB(240, 240, 250)
-	box.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+	box.BackgroundColor3 = Color3.fromRGB(28, 28, 40)
 	box.BorderSizePixel = 0
 	box.ClearTextOnFocus = false
 	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 8)
 
 	local list = Instance.new("ScrollingFrame", panel)
-	list.Size = UDim2.new(1, 0, 0, 200)
-	list.Position = UDim2.new(0, 0, 0, 46)
+	list.Name = "List"
+	list.Size = UDim2.new(1, 0, 0, 0)
+	list.Position = UDim2.new(0, 0, 0, 44)
 	list.BackgroundTransparency = 1
 	list.BorderSizePixel = 0
 	list.ScrollBarThickness = 4
 	list.CanvasSize = UDim2.new(0, 0, 0, 0)
 	list.Visible = false
+	list.ClipsDescendants = true
 
 	local lay = Instance.new("UIListLayout", list)
 	lay.Padding = UDim.new(0, 4)
 	lay.SortOrder = Enum.SortOrder.LayoutOrder
 
 	sg.Parent = pg
+	SearchGui = sg
 
 	local function ClearList()
 		for _, c in ipairs(list:GetChildren()) do
-			if c:IsA("TextButton") then c:Destroy() end
+			if c:IsA("TextButton") then pcall(function() c:Destroy() end) end
 		end
 	end
 
@@ -621,7 +693,8 @@ task.spawn(function()
 		local q = tostring(box.Text or "")
 		if q == "" then
 			list.Visible = false
-			panel.Size = UDim2.new(0, 300, 0, 46)
+			list.Size = UDim2.new(1, 0, 0, 0)
+			panel.Size = UDim2.new(0, 380, 0, 42)
 			return
 		end
 		local ql = string.lower(q)
@@ -646,20 +719,48 @@ task.spawn(function()
 		end
 		if n > 0 then
 			list.Visible = true
+			list.Size = UDim2.new(1, 0, 0, math.min(n * 38, 190))
 			list.CanvasSize = UDim2.new(0, 0, 0, n * 38)
-			panel.Size = UDim2.new(0, 300, 0, math.min(46 + n * 38, 246))
+			panel.Size = UDim2.new(0, 380, 0, 46 + math.min(n * 38, 190))
 		else
 			list.Visible = false
-			panel.Size = UDim2.new(0, 300, 0, 46)
+			list.Size = UDim2.new(1, 0, 0, 0)
+			panel.Size = UDim2.new(0, 380, 0, 42)
 		end
 	end
 
 	box:GetPropertyChangedSignal("Text"):Connect(Refresh)
-	openBtn.MouseButton1Click:Connect(function()
-		panel.Visible = not panel.Visible
-		if panel.Visible then box:CaptureFocus() end
+	box.FocusLost:Connect(function(enter)
+		if enter then
+			local q = string.lower(tostring(box.Text or ""))
+			for _, e in ipairs(SCRIPT_LIB) do
+				if string.find(string.lower(e.name), q, 1, true) then
+					RunScript(e)
+					return
+				end
+			end
+		end
 	end)
 	Refresh()
+	return true
+end
+
+task.spawn(function()
+	task.wait(0.4)
+	pcall(BuildSearch)
+	task.wait(3)
+	pcall(function()
+		if not (SearchGui and SearchGui.Parent) then BuildSearch() end
+	end)
+end)
+
+task.spawn(function()
+	for _ = 1, 6 do
+		task.wait(8)
+		if not (SearchGui and SearchGui.Parent) then
+			pcall(BuildSearch)
+		end
+	end
 end)
 
 Notify("G2R5x 脚本中心", "加载完成  作者Q: 2122119096", 5)
