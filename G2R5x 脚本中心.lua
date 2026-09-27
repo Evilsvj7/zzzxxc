@@ -155,6 +155,10 @@ local SCRIPT_LIB = {
 	{ name = "黑脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet("\x68\x74\x74\x70\x73\x3a\x2f\x2f\x72\x61\x77\x2e\x67\x69\x74\x68\x75\x62\x75\x73\x65\x72\x63\x6f\x6e\x74\x65\x6e\x74\x2e\x63\x6f\x6d\x2f\x68\x67\x76\x75\x79\x67\x75\x79\x67\x2f\x48\x45\x49\x4a\x49\x41\x4f\x42\x45\x4e\x2f\x6d\x61\x69\x6e\x2f\x61\x61\x61"))()]] },
 	{ name = "XA脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://pastebin.com/raw/h8nC0fLb", true))()]] },
 	{ name = "ROBV4脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/idrobsc/rob_script/refs/heads/main/rob.v4"))()]] },
+	{ name = "DB脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/Lisz123456789/7891DBNB/main/DB服务器"))()]] },
+	{ name = "Atomic脚本免费版", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/123fa98/Xi_Pro/refs/heads/main/Atomic-Script"))()]] },
+	{ name = "寒脚本", cat = "普通脚本", code = [[getgenv().SCRIPT_KEY="ec1ecb11-0158-4854-b588-03f5c4c2ab7b";
+loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/d6c1170046d31cebd08f3d38ad1e462e19c29de580b544c6dd7088c2f1de0160/download"))()]] },
 	{ name = "情云脚本中心", cat = "脚本中心", code = [[loadstring(utf8.char((function() return table.unpack({108,111,97,100,115,116,114,105,110,103,40,103,97,109,101,58,72,116,116,112,71,101,116,40,34,104,116,116,112,115,58,47,47,114,97,119,46,103,105,116,104,117,98,117,115,101,114,99,111,110,116,101,110,116,46,99,111,109,47,67,104,105,110,97,81,89,47,45,47,109,97,105,110,47,37,69,54,37,56,51,37,56,53,37,69,52,37,66,65,37,57,49,34,41,41,40,41})end)()))()]] },
 }
 
@@ -172,6 +176,9 @@ local function SafeAdd(tab, method, cfg)
 	return r
 end
 
+local PushRecent
+local RefreshRecent
+
 local function RunScript(entry)
 	Notify("G2R5x", "正在执行: " .. entry.name, 3)
 	local f, err = loadstring(entry.code)
@@ -187,6 +194,7 @@ local function RunScript(entry)
 		return false
 	end
 	Notify("执行成功", entry.name .. " 已运行", 4)
+	if PushRecent then pcall(PushRecent, entry) end
 	return true
 end
 
@@ -239,6 +247,7 @@ end
 --------------------------------------------------------------------------------
 -- 脚本中心
 --------------------------------------------------------------------------------
+local TabRecent = SafeTab({ Title = "最近", Icon = "history" })
 local TabHub = SafeTab({ Title = "脚本中心", Icon = "layout-grid" })
 for _, e in ipairs(SCRIPT_LIB) do
 	if e.cat == "脚本中心" then
@@ -594,173 +603,213 @@ SafeAdd(TabAbout, "Paragraph", {
 	Desc = "部分脚本可能含有检测或风险内容，执行前请自行判断，后果概不负责。",
 })
 
-SafeAdd(TabAbout, "Section", { Title = "工具" })
-SafeAdd(TabAbout, "Button", {
-	Title = "重建搜索框",
-	Desc = "搜索框消失时点这里",
-	Icon = "search",
-	Callback = function()
-		local ok, err = pcall(BuildSearch)
-		if ok then
-			Notify("搜索框", "已重建", 4)
-		else
-			Notify("搜索框", "重建失败: " .. tostring(err):sub(1, 50), 5)
-		end
-	end,
+SafeAdd(TabAbout, "Paragraph", {
+	Title = "关于更新",
+	Desc = "本脚本目前有点垃圾，所以脚本和脚本中心比较少，但是后续会更新。",
 })
 
 --------------------------------------------------------------------------------
--- 搜索（顶部常驻 / 硬匹配脚本名 / 可重建）
+-- 最近运行（最多 3 条）
 --------------------------------------------------------------------------------
-local SearchGui = nil
+local RECENT = {}
 
-local function GetPlayerGui()
-	local pg = LP:FindFirstChild("PlayerGui")
-	if pg then return pg end
-	local ok, r = pcall(function() return LP:WaitForChild("PlayerGui", 10) end)
-	if ok and r then return r end
+RefreshRecent = function()
+	local tab = TabRecent
+	if not tab then return end
+	local cf = tab.UIElements and tab.UIElements.ContainerFrame
+	if not cf then return end
+	for _, c in ipairs(cf:GetChildren()) do
+		if c.Name == "G2R5xRecentItem" then
+			pcall(function() c:Destroy() end)
+		end
+	end
+	if #RECENT == 0 then
+		local lb = Instance.new("TextLabel", cf)
+		lb.Name = "G2R5xRecentItem"
+		lb.Size = UDim2.new(1, 0, 0, 34)
+		lb.BackgroundTransparency = 1
+		lb.Text = "暂无记录，运行脚本后自动出现"
+		lb.TextColor3 = Color3.fromRGB(150, 150, 170)
+		lb.Font = Enum.Font.Gotham
+		lb.TextSize = 14
+		lb.LayoutOrder = -900
+		return
+	end
+	for idx, e in ipairs(RECENT) do
+		local row = Instance.new("Frame", cf)
+		row.Name = "G2R5xRecentItem"
+		row.Size = UDim2.new(1, 0, 0, 38)
+		row.BackgroundTransparency = 1
+		row.LayoutOrder = -900 + idx
+
+		local b = Instance.new("TextButton", row)
+		b.Size = UDim2.new(1, 0, 1, 0)
+		b.BackgroundColor3 = Color3.fromRGB(30, 30, 44)
+		b.BorderSizePixel = 0
+		b.Font = Enum.Font.Gotham
+		b.TextSize = 15
+		b.TextColor3 = Color3.fromRGB(235, 235, 245)
+		b.Text = "▶ " .. e.name .. "  [" .. e.cat .. "]"
+		b.AutoButtonColor = false
+		Instance.new("UICorner", b).CornerRadius = UDim.new(0, 9)
+		b.MouseButton1Click:Connect(function()
+			RunScript(e)
+		end)
+	end
+end
+
+PushRecent = function(entry)
+	if not entry then return end
+	for i = #RECENT, 1, -1 do
+		if RECENT[i].name == entry.name then table.remove(RECENT, i) end
+	end
+	table.insert(RECENT, 1, entry)
+	while #RECENT > 3 do table.remove(RECENT, #RECENT) end
+	pcall(RefreshRecent)
+end
+
+--------------------------------------------------------------------------------
+-- 搜索（内嵌在普通脚本页顶部 / 只列候选，不自动执行）
+--------------------------------------------------------------------------------
+local function ScoreMatch(name, q)
+	local n = string.lower(tostring(name))
+	local k = string.lower(tostring(q))
+	if k == "" then return nil end
+	if n == k then return 0 end
+	if string.sub(n, 1, #k) == k then return 1 end
+	local pos = string.find(n, k, 1, true)
+	if pos then return 2 + pos / 1000 end
 	return nil
 end
 
-function BuildSearch()
-	pcall(function()
-		if SearchGui then SearchGui:Destroy() SearchGui = nil end
-	end)
-	local pg = GetPlayerGui()
-	if not pg then
-		warn("[G2R5x] 找不到 PlayerGui，搜索框未创建")
+local function BuildInlineSearch(tab)
+	if not tab then return false end
+	local cf = tab.UIElements and tab.UIElements.ContainerFrame
+	if not cf then
+		warn("[G2R5x] 拿不到页容器，搜索框未内嵌")
 		return false
 	end
+	for _, c in ipairs(cf:GetChildren()) do
+		if c.Name == "G2R5xSearchWrap" then
+			pcall(function() c:Destroy() end)
+		end
+	end
 
-	local sg = Instance.new("ScreenGui")
-	sg.Name = "G2R5xSearch"
-	sg.ResetOnSpawn = false
-	sg.IgnoreGuiInset = true
-	sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	sg.DisplayOrder = 2147483647
+	local wrap = Instance.new("Frame", cf)
+	wrap.Name = "G2R5xSearchWrap"
+	wrap.LayoutOrder = -9999
+	wrap.Size = UDim2.new(1, 0, 0, 40)
+	wrap.BackgroundTransparency = 1
+	wrap.BorderSizePixel = 0
 
-	local panel = Instance.new("Frame", sg)
-	panel.Name = "Panel"
-	panel.Size = UDim2.new(0, 380, 0, 42)
-	panel.Position = UDim2.new(0.5, -190, 0, 6)
-	panel.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
-	panel.BackgroundTransparency = 0.12
-	panel.BorderSizePixel = 0
-	panel.Active = true
-	Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 10)
-
-	local box = Instance.new("TextBox", panel)
+	local box = Instance.new("TextBox", wrap)
 	box.Name = "Box"
-	box.Size = UDim2.new(1, -16, 0, 30)
-	box.Position = UDim2.new(0, 8, 0, 6)
-	box.PlaceholderText = "搜索脚本名称（硬匹配）"
-	box.PlaceholderColor3 = Color3.fromRGB(140, 140, 160)
+	box.Size = UDim2.new(1, -84, 0, 32)
+	box.Position = UDim2.new(0, 0, 0, 4)
+	box.PlaceholderText = "搜索脚本"
+	box.PlaceholderColor3 = Color3.fromRGB(140, 140, 165)
 	box.Text = ""
 	box.Font = Enum.Font.Gotham
 	box.TextSize = 15
 	box.TextColor3 = Color3.fromRGB(240, 240, 250)
-	box.BackgroundColor3 = Color3.fromRGB(28, 28, 40)
+	box.BackgroundColor3 = Color3.fromRGB(28, 28, 42)
 	box.BorderSizePixel = 0
 	box.ClearTextOnFocus = false
-	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 8)
+	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 9)
 
-	local list = Instance.new("ScrollingFrame", panel)
-	list.Name = "List"
-	list.Size = UDim2.new(1, 0, 0, 0)
-	list.Position = UDim2.new(0, 0, 0, 44)
-	list.BackgroundTransparency = 1
-	list.BorderSizePixel = 0
-	list.ScrollBarThickness = 4
-	list.CanvasSize = UDim2.new(0, 0, 0, 0)
-	list.Visible = false
-	list.ClipsDescendants = true
+	local sbtn = Instance.new("TextButton", wrap)
+	sbtn.Name = "Btn"
+	sbtn.Size = UDim2.new(0, 76, 0, 32)
+	sbtn.Position = UDim2.new(1, -76, 0, 4)
+	sbtn.BackgroundColor3 = Color3.fromRGB(48, 48, 70)
+	sbtn.BorderSizePixel = 0
+	sbtn.Font = Enum.Font.GothamBold
+	sbtn.TextSize = 14
+	sbtn.TextColor3 = Color3.fromRGB(235, 235, 250)
+	sbtn.Text = "搜索"
+	sbtn.AutoButtonColor = false
+	Instance.new("UICorner", sbtn).CornerRadius = UDim.new(0, 9)
 
-	local lay = Instance.new("UIListLayout", list)
-	lay.Padding = UDim.new(0, 4)
+	local res = Instance.new("Frame", cf)
+	res.Name = "G2R5xSearchWrap"
+	res.LayoutOrder = -9998
+	res.Size = UDim2.new(1, 0, 0, 0)
+	res.BackgroundTransparency = 1
+	res.BorderSizePixel = 0
+
+	local lay = Instance.new("UIListLayout", res)
+	lay.Padding = UDim.new(0, 5)
 	lay.SortOrder = Enum.SortOrder.LayoutOrder
 
-	sg.Parent = pg
-	SearchGui = sg
-
-	local function ClearList()
-		for _, c in ipairs(list:GetChildren()) do
+	local function ClearRes()
+		for _, c in ipairs(res:GetChildren()) do
 			if c:IsA("TextButton") then pcall(function() c:Destroy() end) end
 		end
+		res.Size = UDim2.new(1, 0, 0, 0)
 	end
 
-	local function Refresh()
-		ClearList()
+	local function DoSearch()
+		ClearRes()
 		local q = tostring(box.Text or "")
-		if q == "" then
-			list.Visible = false
-			list.Size = UDim2.new(1, 0, 0, 0)
-			panel.Size = UDim2.new(0, 380, 0, 42)
-			return
-		end
-		local ql = string.lower(q)
-		local n = 0
+		if q == "" then return end
+		local hits = {}
 		for _, e in ipairs(SCRIPT_LIB) do
-			if string.find(string.lower(e.name), ql, 1, true) then
-				n = n + 1
-				local b = Instance.new("TextButton", list)
-				b.Size = UDim2.new(1, -8, 0, 34)
-				b.BackgroundColor3 = Color3.fromRGB(34, 34, 48)
-				b.BorderSizePixel = 0
-				b.Font = Enum.Font.Gotham
-				b.TextSize = 15
-				b.TextColor3 = Color3.fromRGB(235, 235, 245)
-				b.Text = "▶ " .. e.name .. "  [" .. e.cat .. "]"
-				b.LayoutOrder = n
-				Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
-				b.MouseButton1Click:Connect(function()
-					RunScript(e)
-				end)
-			end
+			local sc = ScoreMatch(e.name, q)
+			if sc then hits[#hits + 1] = { e = e, sc = sc } end
 		end
-		if n > 0 then
-			list.Visible = true
-			list.Size = UDim2.new(1, 0, 0, math.min(n * 38, 190))
-			list.CanvasSize = UDim2.new(0, 0, 0, n * 38)
-			panel.Size = UDim2.new(0, 380, 0, 46 + math.min(n * 38, 190))
-		else
-			list.Visible = false
-			list.Size = UDim2.new(1, 0, 0, 0)
-			panel.Size = UDim2.new(0, 380, 0, 42)
+		table.sort(hits, function(a, b) return a.sc < b.sc end)
+		for i, h in ipairs(hits) do
+			local b = Instance.new("TextButton", res)
+			b.Size = UDim2.new(1, 0, 0, 34)
+			b.BackgroundColor3 = Color3.fromRGB(34, 34, 50)
+			b.BorderSizePixel = 0
+			b.Font = Enum.Font.Gotham
+			b.TextSize = 15
+			b.TextColor3 = Color3.fromRGB(235, 235, 245)
+			b.Text = "▶ " .. h.e.name .. "  [" .. h.e.cat .. "]"
+			b.LayoutOrder = i
+			b.AutoButtonColor = false
+			Instance.new("UICorner", b).CornerRadius = UDim.new(0, 9)
+			b.MouseButton1Click:Connect(function()
+				RunScript(h.e)
+			end)
 		end
+		res.Size = UDim2.new(1, 0, 0, #hits * 39)
 	end
 
-	box:GetPropertyChangedSignal("Text"):Connect(Refresh)
+	sbtn.MouseButton1Click:Connect(DoSearch)
 	box.FocusLost:Connect(function(enter)
-		if enter then
-			local q = string.lower(tostring(box.Text or ""))
-			for _, e in ipairs(SCRIPT_LIB) do
-				if string.find(string.lower(e.name), q, 1, true) then
-					RunScript(e)
-					return
-				end
-			end
-		end
+		if enter then DoSearch() end
 	end)
-	Refresh()
 	return true
 end
 
 task.spawn(function()
-	task.wait(0.4)
-	pcall(BuildSearch)
-	task.wait(3)
-	pcall(function()
-		if not (SearchGui and SearchGui.Parent) then BuildSearch() end
-	end)
+	task.wait(0.5)
+	pcall(BuildInlineSearch, TabNormal)
+	pcall(RefreshRecent)
 end)
 
-task.spawn(function()
-	for _ = 1, 6 do
-		task.wait(8)
-		if not (SearchGui and SearchGui.Parent) then
-			pcall(BuildSearch)
-		end
-	end
+pcall(function()
+	getgenv().G2R5X = {
+		Lib = SCRIPT_LIB,
+		Recent = RECENT,
+		Run = RunScript,
+		PushRecent = PushRecent,
+		RefreshRecent = RefreshRecent,
+		BuildSearch = BuildInlineSearch,
+		Search = function(q)
+			local hits = {}
+			for _, e in ipairs(SCRIPT_LIB) do
+				local sc = ScoreMatch(e.name, q)
+				if sc then hits[#hits + 1] = { e = e, sc = sc } end
+			end
+			table.sort(hits, function(a, b) return a.sc < b.sc end)
+			local out = {}
+			for _, h in ipairs(hits) do out[#out + 1] = h.e.name end
+			return out
+		end,
+	}
 end)
 
 Notify("G2R5x 脚本中心", "加载完成  作者Q: 2122119096", 5)
