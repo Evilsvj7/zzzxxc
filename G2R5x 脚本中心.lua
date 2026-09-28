@@ -14,7 +14,7 @@ local HUB_CN = "脚本中心"
 --------------------------------------------------------------------------------
 -- 开场动画
 --------------------------------------------------------------------------------
-local function PlayIntro()
+local function MkIntroGui()
 	local pg = LP:WaitForChild("PlayerGui")
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "G2R5xIntro"
@@ -24,12 +24,14 @@ local function PlayIntro()
 	gui.DisplayOrder = 9999
 
 	local bg = Instance.new("Frame", gui)
+	bg.Name = "BG"
 	bg.Size = UDim2.new(1, 0, 1, 0)
 	bg.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
 	bg.BackgroundTransparency = 0
 	bg.BorderSizePixel = 0
 
 	local holder = Instance.new("Frame", bg)
+	holder.Name = "Holder"
 	holder.Size = UDim2.new(0, 560, 0, 140)
 	holder.Position = UDim2.new(0.5, 0, 0.5, 0)
 	holder.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -48,6 +50,7 @@ local function PlayIntro()
 	en.TextXAlignment = Enum.TextXAlignment.Right
 
 	local bar = Instance.new("Frame", holder)
+	bar.Name = "Bar"
 	bar.Size = UDim2.new(0, 3, 0, 90)
 	bar.Position = UDim2.new(0, 272, 0, 25)
 	bar.BackgroundColor3 = Color3.fromRGB(255, 90, 90)
@@ -67,6 +70,7 @@ local function PlayIntro()
 	cn.TextXAlignment = Enum.TextXAlignment.Left
 
 	local sub = Instance.new("TextLabel", bg)
+	sub.Name = "Sub"
 	sub.Size = UDim2.new(0, 400, 0, 30)
 	sub.Position = UDim2.new(0.5, 0, 0.62, 0)
 	sub.AnchorPoint = Vector2.new(0.5, 0)
@@ -78,15 +82,10 @@ local function PlayIntro()
 	sub.TextTransparency = 1
 
 	gui.Parent = pg
+	return gui, bg, en, bar, cn, sub
+end
 
-	local ti = TweenInfo.new(0.9, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-	TS:Create(en, ti, { TextTransparency = 0 }):Play()
-	task.wait(0.55)
-	TS:Create(bar, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0 }):Play()
-	TS:Create(cn, ti, { TextTransparency = 0 }):Play()
-	task.wait(0.75)
-	TS:Create(sub, TweenInfo.new(0.5), { TextTransparency = 0 }):Play()
-	task.wait(1.05)
+local function IntroFadeOut(gui, bg, en, bar, cn, sub)
 	TS:Create(bg, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { BackgroundTransparency = 1 }):Play()
 	TS:Create(en, TweenInfo.new(0.45), { TextTransparency = 1 }):Play()
 	TS:Create(cn, TweenInfo.new(0.45), { TextTransparency = 1 }):Play()
@@ -96,10 +95,82 @@ local function PlayIntro()
 	pcall(function() gui:Destroy() end)
 end
 
+local INTRO_STYLE = 1
+local INTRO_NAMES = { "风格一 淡入展开", "风格二 缩放弹入", "风格三 打字机" }
+
+local introFn = {}
+
+introFn[1] = function()
+	local gui, bg, en, bar, cn, sub = MkIntroGui()
+	local ti = TweenInfo.new(0.9, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+	TS:Create(en, ti, { TextTransparency = 0 }):Play()
+	task.wait(0.55)
+	TS:Create(bar, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0 }):Play()
+	TS:Create(cn, ti, { TextTransparency = 0 }):Play()
+	task.wait(0.75)
+	TS:Create(sub, TweenInfo.new(0.5), { TextTransparency = 0 }):Play()
+	task.wait(1.05)
+	IntroFadeOut(gui, bg, en, bar, cn, sub)
+end
+
+introFn[2] = function()
+	local gui, bg, en, bar, cn, sub = MkIntroGui()
+	en.TextTransparency = 0
+	cn.TextTransparency = 0
+	bar.BackgroundTransparency = 0
+	sub.TextTransparency = 0
+	local sc = Instance.new("UIScale", gui)
+	sc.Scale = 0.35
+	bg.BackgroundTransparency = 1
+	TS:Create(bg, TweenInfo.new(0.35), { BackgroundTransparency = 0 }):Play()
+	TS:Create(sc, TweenInfo.new(0.75, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.wait(0.85)
+	TS:Create(sc, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 1.08 }):Play()
+	task.wait(0.3)
+	TS:Create(sc, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.wait(1.0)
+	IntroFadeOut(gui, bg, en, bar, cn, sub)
+end
+
+introFn[3] = function()
+	local gui, bg, en, bar, cn, sub = MkIntroGui()
+	en.Text = ""
+	cn.Text = ""
+	en.TextTransparency = 0
+	cn.TextTransparency = 0
+	sub.TextTransparency = 0
+	task.spawn(function()
+		for i = 1, #HUB_NAME do
+			if not gui.Parent then return end
+			en.Text = string.sub(HUB_NAME, 1, i)
+			task.wait(0.09)
+		end
+		TS:Create(bar, TweenInfo.new(0.3), { BackgroundTransparency = 0 }):Play()
+		task.wait(0.3)
+		for i = 1, #HUB_CN do
+			if not gui.Parent then return end
+			cn.Text = string.sub(HUB_CN, 1, i)
+			task.wait(0.11)
+		end
+	end)
+	task.wait(2.4)
+	IntroFadeOut(gui, bg, en, bar, cn, sub)
+end
+
+local function PlayIntro()
+	local fn = introFn[INTRO_STYLE] or introFn[1]
+	fn()
+end
+
+_G.__G2R5X_INTRO = { list = INTRO_NAMES, get = function() return INTRO_STYLE end,
+	set = function(i) INTRO_STYLE = math.clamp(tonumber(i) or 1, 1, 3) end }
+
 task.spawn(function()
 	task.spawn(function()
 		task.wait(0.2)
-		if _G.__G2R5X_CFG and _G.__G2R5X_CFG.intro == false then return end
+		local c = _G.__G2R5X_CFG
+		if c and c.intro == false then return end
+		if c and c.introStyle then INTRO_STYLE = math.clamp(tonumber(c.introStyle) or 1, 1, 3) end
 		pcall(PlayIntro)
 	end)
 end)
@@ -445,74 +516,99 @@ end
 --------------------------------------------------------------------------------
 -- 无限跳跃 3 种方式
 --------------------------------------------------------------------------------
-local IJ_MODES = { "方式一 状态重置", "方式二 落地即跳", "方式三 速度注入" }
+local IJ_MODES = { "方式一 状态重置", "方式二 冷却计数", "方式三 速度注入" }
 local IJMode = 1
 local IJAuto = true
 local IJOn = false
 local IJVal = 50
+local IJConn = nil
+local IJCool = 0.12
+local IJAir = 0
+local IJMax = 0
+
+local function StopIJ()
+	if IJConn then pcall(function() IJConn:Disconnect() end) end
+	IJConn = nil
+	IJAir = 0
+end
 
 local applyIJ = {}
+
 applyIJ[1] = function(hum, v)
-	task.spawn(function()
-		while IJOn and IJMode == 1 do
-			pcall(function()
-				local h = GetHum()
-				local r = GetRoot()
-				if h and r then
-					local st = h:GetState()
-					if st ~= Enum.HumanoidStateType.Jumping and st ~= Enum.HumanoidStateType.Freefall then
-						if h.Jump == false and h.MoveDirection.Magnitude >= 0 then
-							h:ChangeState(Enum.HumanoidStateType.Jumping)
-						end
-					end
-				end
+	StopIJ()
+	IJConn = UIS.JumpRequest:Connect(function()
+		if not IJOn then return end
+		pcall(function()
+			local h = GetHum()
+			if not h then return end
+			if h:GetState() == Enum.HumanoidStateType.Dead then return end
+			h:ChangeState(Enum.HumanoidStateType.Jumping)
+		end)
+	end)
+end
+
+applyIJ[2] = function(hum, v)
+	StopIJ()
+	pcall(function()
+		local h = GetHum()
+		if h then
+			h.StateChanged:Connect(function(_, ns)
+				if ns == Enum.HumanoidStateType.Landed then IJAir = 0 end
 			end)
-			RS.Heartbeat:Wait()
 		end
 	end)
-end
-applyIJ[2] = function(hum, v)
-	task.spawn(function()
-		local conn
-		conn = RS.Heartbeat:Connect(function()
-			if not (IJOn and IJMode == 2) then return end
-			pcall(function()
-				local h = GetHum()
-				if h and h.FloorMaterial ~= Enum.Material.Air then
-					h.Jump = true
-				end
-			end)
+	IJConn = UIS.JumpRequest:Connect(function()
+		if not IJOn then return end
+		pcall(function()
+			local h = GetHum()
+			if not h then return end
+			if h:GetState() == Enum.HumanoidStateType.Dead then return end
+			if IJMax > 0 and IJAir >= IJMax then return end
+			local st = h:GetState()
+			local grounded = (st == Enum.HumanoidStateType.Running)
+				or (st == Enum.HumanoidStateType.RunningNoPhysics)
+				or (h.FloorMaterial ~= Enum.Material.Air)
+			if not grounded then
+				IJAir = IJAir + 1
+				h:ChangeState(Enum.HumanoidStateType.Jumping)
+				task.wait(IJCool)
+			else
+				IJAir = 0
+			end
 		end)
-		while IJOn and IJMode == 2 do task.wait(0.5) end
-		pcall(function() if conn then conn:Disconnect() end end)
 	end)
 end
+
 applyIJ[3] = function(hum, v)
-	task.spawn(function()
-		local conn
-		conn = UIS.JumpRequest:Connect(function()
-			pcall(function()
-				local r = GetRoot()
-				if r then
-					r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, v, r.AssemblyLinearVelocity.Z)
-				end
-			end)
+	StopIJ()
+	IJConn = UIS.JumpRequest:Connect(function()
+		if not IJOn then return end
+		pcall(function()
+			local h = GetHum()
+			local r = GetRoot()
+			if not (h and r) then return end
+			if h:GetState() == Enum.HumanoidStateType.Dead then return end
+			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
+			r.AssemblyLinearVelocity = Vector3.new(
+				r.AssemblyLinearVelocity.X,
+				v,
+				r.AssemblyLinearVelocity.Z
+			)
 		end)
-		while IJOn and IJMode == 3 do task.wait(0.5) end
-		pcall(function() if conn then conn:Disconnect() end end)
 	end)
 end
 
 --------------------------------------------------------------------------------
 -- 穿墙 3 种方式
 --------------------------------------------------------------------------------
-local NC_MODES = { "方式一 关闭碰撞", "方式二 碰撞分组", "方式三 位移穿透" }
+local NC_MODES = { "方式一 逐帧关碰撞", "方式二 碰撞分组", "方式三 RootPart穿透" }
 local NCMode = 1
 local NCAuto = true
 local NCOn = false
 local NCVal = 3
 local NCSaved = {}
 local NCGroup = "G2R5xNoClip"
+local NCConn = nil
 
 local function CharParts()
 	local c = LP.Character
@@ -524,64 +620,10 @@ local function CharParts()
 	return out
 end
 
-local applyNC = {}
-applyNC[1] = function()
-	for _, p in ipairs(CharParts()) do
-		if NCSaved[p] == nil then NCSaved[p] = p.CanCollide end
-		pcall(function() p.CanCollide = false end)
-	end
-	task.spawn(function()
-		while NCOn and NCMode == 1 do
-			pcall(function()
-				for _, p in ipairs(CharParts()) do p.CanCollide = false end
-			end)
-			task.wait(0.35)
-		end
-	end)
-end
-applyNC[2] = function()
-	pcall(function()
-		local ps = game:GetService("PhysicsService")
-		pcall(function() ps:CreateCollisionGroup(NCGroup) end)
-		pcall(function() ps:CollisionGroupSetCollidable(NCGroup, "Default", false) end)
-		for _, p in ipairs(CharParts()) do
-			pcall(function() ps:SetPartCollisionGroup(p, NCGroup) end)
-		end
-	end)
-	task.spawn(function()
-		while NCOn and NCMode == 2 do
-			pcall(function()
-				local ps = game:GetService("PhysicsService")
-				for _, p in ipairs(CharParts()) do
-					ps:SetPartCollisionGroup(p, NCGroup)
-				end
-			end)
-			task.wait(0.5)
-		end
-	end)
-end
-applyNC[3] = function()
-	task.spawn(function()
-		while NCOn and NCMode == 3 do
-			pcall(function()
-				local h = GetHum()
-				local r = GetRoot()
-				if not (h and r) then return end
-				for _, p in ipairs(CharParts()) do
-					pcall(function() p.CanCollide = false end)
-				end
-				local mv = h.MoveDirection
-				if mv.Magnitude > 0.01 then
-					r.CFrame = r.CFrame + (mv.Unit * (NCVal / 60))
-				end
-			end)
-			RS.Heartbeat:Wait()
-		end
-	end)
-end
-
 local function StopNC()
 	NCOn = false
+	if NCConn then pcall(function() NCConn:Disconnect() end) end
+	NCConn = nil
 	pcall(function()
 		for p, v in pairs(NCSaved) do p.CanCollide = v end
 	end)
@@ -591,6 +633,67 @@ local function StopNC()
 		for _, p in ipairs(CharParts()) do
 			pcall(function() ps:SetPartCollisionGroup(p, "Default") end)
 		end
+	end)
+end
+
+local applyNC = {}
+
+applyNC[1] = function()
+	for _, p in ipairs(CharParts()) do
+		if NCSaved[p] == nil then NCSaved[p] = p.CanCollide end
+	end
+	if NCConn then pcall(function() NCConn:Disconnect() end) end
+	NCConn = RS.Stepped:Connect(function()
+		if not NCOn then return end
+		for _, p in ipairs(CharParts()) do
+			if NCSaved[p] == nil then NCSaved[p] = p.CanCollide end
+			if p.CanCollide then p.CanCollide = false end
+		end
+	end)
+end
+
+applyNC[2] = function()
+	pcall(function()
+		local ps = game:GetService("PhysicsService")
+		pcall(function() ps:CreateCollisionGroup(NCGroup) end)
+		pcall(function() ps:CollisionGroupSetCollidable(NCGroup, "Default", false) end)
+		for _, p in ipairs(CharParts()) do
+			pcall(function() ps:SetPartCollisionGroup(p, NCGroup) end)
+		end
+	end)
+	if NCConn then pcall(function() NCConn:Disconnect() end) end
+	NCConn = RS.Stepped:Connect(function()
+		if not NCOn then return end
+		pcall(function()
+			local ps = game:GetService("PhysicsService")
+			for _, p in ipairs(CharParts()) do
+				ps:SetPartCollisionGroup(p, NCGroup)
+			end
+		end)
+	end)
+end
+
+applyNC[3] = function()
+	local c = LP.Character
+	if not c then return end
+	local root = c:FindFirstChild("HumanoidRootPart") or c.PrimaryPart
+	if not root then return end
+	if NCSaved[root] == nil then NCSaved[root] = root.CanCollide end
+	root.CanCollide = false
+	if NCConn then pcall(function() NCConn:Disconnect() end) end
+	NCConn = RS.Stepped:Connect(function()
+		if not NCOn then return end
+		pcall(function()
+			local cc = LP.Character
+			if not cc then return end
+			local r = cc:FindFirstChild("HumanoidRootPart") or cc.PrimaryPart
+			if not r then return end
+			if r.CanCollide then r.CanCollide = false end
+			local h = cc:FindFirstChildOfClass("Humanoid")
+			if h and h.MoveDirection.Magnitude > 0.01 then
+				r.CFrame = r.CFrame + (h.MoveDirection.Unit * (NCVal / 60))
+			end
+		end)
 	end)
 end
 
@@ -768,15 +871,16 @@ TabLocal:Toggle({
 		IJOn = state
 		if state then
 			DoIJ()
-			Notify("本地修改", "无限跳跃已开启", 3)
+			Notify("本地修改", "无限跳跃已开启（空中按跳跃键）", 3)
 		else
+			StopIJ()
 			Notify("本地修改", "无限跳跃已关闭", 3)
 		end
 	end,
 })
 SafeAdd(TabLocal, "Slider", {
 	Title = "跳跃力度",
-	Desc = "仅方式三生效",
+	Desc = "仅方式三生效：空中每次跳的上升速度",
 	Value = { Min = 20, Max = 300, Default = 50 },
 	Step = 1,
 	Range = { 20, 300 },
@@ -788,9 +892,20 @@ SafeAdd(TabLocal, "Slider", {
 		end
 	end,
 })
+SafeAdd(TabLocal, "Slider", {
+	Title = "空中连跳上限",
+	Desc = "0 = 无限跳；仅方式二生效",
+	Value = { Min = 0, Max = 20, Default = 0 },
+	Step = 1,
+	Range = { 0, 20 },
+	CurrentValue = 0,
+	Callback = function(val)
+		if type(val) == "number" then IJMax = val end
+	end,
+})
 SafeAdd(TabLocal, "Dropdown", {
 	Title = "无限跳跃方式",
-	Desc = "跳不动就换一种",
+	Desc = "在空中按跳跃键可再次起跳，跳不动就换一种",
 	Values = IJ_MODES,
 	Value = IJ_MODES[1],
 	Multi = false,
@@ -1148,6 +1263,7 @@ local CFG = {
 	theme = "Dark",
 	scale = 1,
 	intro = true,
+	introStyle = 1,
 	notifDur = 5,
 }
 local savedCfg = FS.Load("config")
@@ -1160,7 +1276,7 @@ local function SaveCfg()
 	FS.Save("config", {
 		autoRun = CFG.autoRun, autoName = CFG.autoName,
 		theme = CFG.theme, scale = CFG.scale,
-		intro = CFG.intro, notifDur = CFG.notifDur,
+		intro = CFG.intro, introStyle = CFG.introStyle, notifDur = CFG.notifDur,
 	})
 end
 
@@ -1239,7 +1355,14 @@ SafeAdd(TabSet, "Slider", {
 		if type(val) == "number" then
 			CFG.scale = val / 100
 			pcall(function()
-				if WindUI and WindUI.UIScale then WindUI.UIScale.Scale = CFG.scale end
+				if Window and Window.SetUIScale then
+					Window:SetUIScale(CFG.scale)
+					return
+				end
+				if WindUI and WindUI.ScreenGui then
+					local us = WindUI.ScreenGui:FindFirstChild("UIScale")
+					if us then us.Scale = CFG.scale end
+				end
 			end)
 			SaveCfg()
 		end
@@ -1267,6 +1390,31 @@ SafeAdd(TabSet, "Toggle", {
 		SaveCfg()
 	end,
 })
+SafeAdd(TabSet, "Dropdown", {
+	Title = "开场动画风格",
+	Desc = "选一个你喜欢的",
+	Values = INTRO_NAMES,
+	Value = INTRO_NAMES[CFG.introStyle] or INTRO_NAMES[1],
+	Multi = false,
+	AllowNone = false,
+	Options = INTRO_NAMES,
+	CurrentOption = INTRO_NAMES[CFG.introStyle] or INTRO_NAMES[1],
+	Callback = function(op)
+		local pick = op
+		if type(op) == "table" then pick = op[1] or op.Value end
+		for i, v in ipairs(INTRO_NAMES) do
+			if v == pick then CFG.introStyle = i INTRO_STYLE = i end
+		end
+		SaveCfg()
+	end,
+})
+SafeAdd(TabSet, "Button", {
+	Title = "预览开场动画",
+	Desc = "立即播放一次当前风格",
+	Callback = function()
+		task.spawn(function() pcall(PlayIntro) end)
+	end,
+})
 SafeAdd(TabSet, "Button", {
 	Title = "清空最近记录",
 	Desc = "删除本地保存的最近运行",
@@ -1286,6 +1434,7 @@ SafeAdd(TabSet, "Button", {
 		CFG.theme = "Dark"
 		CFG.scale = 1
 		CFG.intro = true
+		CFG.introStyle = 1
 		CFG.notifDur = 5
 		SaveCfg()
 		Notify("设置", "已恢复默认", 4)
@@ -1326,6 +1475,20 @@ pcall(function()
 			return out
 		end,
 	}
+end)
+
+task.spawn(function()
+	task.wait(0.6)
+	if CFG.scale ~= 1 then
+		pcall(function()
+			if Window and Window.SetUIScale then
+				Window:SetUIScale(CFG.scale)
+			elseif WindUI and WindUI.ScreenGui then
+				local us = WindUI.ScreenGui:FindFirstChild("UIScale")
+				if us then us.Scale = CFG.scale end
+			end
+		end)
+	end
 end)
 
 Notify("G2R5x 脚本中心", "加载完成", CFG.notifDur or 5)
