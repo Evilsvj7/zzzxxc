@@ -235,16 +235,6 @@ local function CopyText(txt)
 	return ok
 end
 
-local function Notify(t1, t2, dur)
-	pcall(function()
-		game:GetService("StarterGui"):SetCore("SendNotification", {
-			Title = t1 or "G2R5x",
-			Text = t2 or "",
-			Duration = dur or 4,
-		})
-	end)
-end
-
 --------------------------------------------------------------------------------
 -- 本地存档（换服务器 / 重进后仍然保留）
 --------------------------------------------------------------------------------
@@ -278,6 +268,72 @@ function FS.Load(name)
 	return out
 end
 
+local CFG = {
+	autoRun = false,
+	autoName = "",
+	theme = "Dark",
+	scale = 1,
+	intro = true,
+	introStyle = 1,
+	notifDur = 5,
+	transparency = false,
+	autoFit = true,
+	notifSound = true,
+	confirmBeforeRun = false,
+	recentMax = 3,
+	searchShowAll = true,
+	autoHideAfterRun = false,
+	lowPerf = false,
+	sideBar = true,
+	rescue = true,
+}
+local savedCfg = FS.Load("config")
+if type(savedCfg) == "table" then
+	for k, v in pairs(savedCfg) do
+		CFG[k] = v
+	end
+end
+local function SaveCfg()
+	FS.Save("config", {
+		autoRun = CFG.autoRun, autoName = CFG.autoName,
+		theme = CFG.theme, scale = CFG.scale,
+		intro = CFG.intro, introStyle = CFG.introStyle, notifDur = CFG.notifDur,
+		transparency = CFG.transparency, autoFit = CFG.autoFit,
+		notifSound = CFG.notifSound, confirmBeforeRun = CFG.confirmBeforeRun,
+		recentMax = CFG.recentMax, searchShowAll = CFG.searchShowAll,
+		autoHideAfterRun = CFG.autoHideAfterRun, lowPerf = CFG.lowPerf,
+		sideBar = CFG.sideBar, rescue = CFG.rescue,
+	})
+end
+
+local function Beep()
+	if CFG.notifSound == false then return end
+	task.spawn(function()
+		pcall(function()
+			local snd = Instance.new("Sound")
+			snd.SoundId = "rbxassetid://9118823106"
+			snd.Volume = 0.35
+			snd.Parent = WS
+			snd:Play()
+			task.wait(1.2)
+			snd:Destroy()
+		end)
+	end)
+end
+
+local function Notify(t1, t2, dur)
+	Beep()
+	pcall(function()
+		game:GetService("StarterGui"):SetCore("SendNotification", {
+			Title = t1 or "G2R5x",
+			Text = t2 or "",
+			Duration = dur or 4,
+		})
+	end)
+end
+
+
+
 --------------------------------------------------------------------------------
 -- 脚本库
 --------------------------------------------------------------------------------
@@ -291,6 +347,7 @@ local SCRIPT_LIB = {
 	{ name = "DB脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/Lisz123456789/7891DBNB/main/DB服务器"))()]] },
 	{ name = "Atomic脚本免费版", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/123fa98/Xi_Pro/refs/heads/main/Atomic-Script"))()]] },
 	{ name = "RT脚本免费版", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://gitee.com/founder-of-xt/rt-script-1/raw/master/script.lua",true))()]] },
+	{ name = "星脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/zilinskaslandon/XingJiaoBen-2026-/refs/heads/main/%E6%98%9F%E8%84%9A%E6%9C%AC.lua"))()]] },
 	{ name = "寒脚本", cat = "普通脚本", code = [[getgenv().SCRIPT_KEY="ec1ecb11-0158-4854-b588-03f5c4c2ab7b";
 loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/d6c1170046d31cebd08f3d38ad1e462e19c29de580b544c6dd7088c2f1de0160/download"))()]] },
 	{ name = "安脚本中心", cat = "脚本中心", code = [[loadstring(game:HttpGet(('https://raw.githubusercontent.com/wucan114514/gegeyxjb/main/oww')))()]] },
@@ -323,7 +380,17 @@ end
 local PushRecent
 local RefreshRecent
 
+local PendingConfirm = {}
 local function RunScript(entry)
+	if CFG.confirmBeforeRun then
+		if PendingConfirm[entry.name] ~= true then
+			PendingConfirm[entry.name] = true
+			Notify("G2R5x 脚本中心", "再点一次确认运行", 4)
+			task.delay(5, function() PendingConfirm[entry.name] = nil end)
+			return false
+		end
+		PendingConfirm[entry.name] = nil
+	end
 	Notify("G2R5x 脚本中心", "正在执行...", 3)
 	local f, err = loadstring(entry.code)
 	if not f then
@@ -339,8 +406,14 @@ local function RunScript(entry)
 	end
 	Notify("G2R5x 脚本中心", "执行完成", 4)
 	if PushRecent then pcall(PushRecent, entry) end
+	if CFG.autoHideAfterRun then
+		pcall(function()
+			if Window and Window.Close then Window:Close() end
+		end)
+	end
 	return true
 end
+
 
 --------------------------------------------------------------------------------
 -- 加载 UI 库
@@ -1468,6 +1541,11 @@ local function BuildInlineSearch(tab)
 			if sc then hits[#hits + 1] = { e = e, sc = sc } end
 		end
 		table.sort(hits, function(a, b) return a.sc < b.sc end)
+		if CFG.searchShowAll == false and #hits > 8 then
+			local cut = {}
+			for i = 1, 8 do cut[i] = hits[i] end
+			hits = cut
+		end
 		for i, h in ipairs(hits) do
 			local b = Instance.new("TextButton", res)
 			b.Size = UDim2.new(1, 0, 0, 34)
@@ -1504,29 +1582,6 @@ end)
 -- 设置
 --------------------------------------------------------------------------------
 local TabSet = SafeTab({ Title = "设置", Icon = "settings" })
-
-local CFG = {
-	autoRun = false,
-	autoName = "",
-	theme = "Dark",
-	scale = 1,
-	intro = true,
-	introStyle = 1,
-	notifDur = 5,
-}
-local savedCfg = FS.Load("config")
-if type(savedCfg) == "table" then
-	for k, v in pairs(savedCfg) do
-		if CFG[k] ~= nil then CFG[k] = v end
-	end
-end
-local function SaveCfg()
-	FS.Save("config", {
-		autoRun = CFG.autoRun, autoName = CFG.autoName,
-		theme = CFG.theme, scale = CFG.scale,
-		intro = CFG.intro, introStyle = CFG.introStyle, notifDur = CFG.notifDur,
-	})
-end
 
 SafeAdd(TabSet, "Section", { Title = "主链接" })
 SafeAdd(TabSet, "Button", {
@@ -1592,14 +1647,147 @@ SafeAdd(TabSet, "Dropdown", {
 		SaveCfg()
 	end,
 })
-local SCALE_MIN = 60
+local SCALE_MIN = 20
 local SCALE_MAX = 300
-local AutoFitOn = true
+local AutoFitOn = (CFG.autoFit ~= false)
 
 local function Viewport()
 	local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
 	if cam then return cam.ViewportSize end
 	return Vector2.new(1280, 720)
+end
+
+local function AllUIScale()
+	local out = {}
+	pcall(function()
+		if WindUI and WindUI.ScreenGui then
+			local us = WindUI.ScreenGui:FindFirstChild("UIScale")
+			if us then out[#out + 1] = us end
+		end
+	end)
+	pcall(function()
+		if WindUI and WindUI.NotificationGui then
+			local us = WindUI.NotificationGui:FindFirstChild("UIScale")
+			if us then out[#out + 1] = us end
+		end
+	end)
+	pcall(function()
+		if WindUI and WindUI.DropdownGui then
+			local us = WindUI.DropdownGui:FindFirstChild("UIScale")
+			if us then out[#out + 1] = us end
+		end
+	end)
+	pcall(function()
+		if Window and Window.UIElements and Window.UIElements.Main then
+			local us = Window.UIElements.Main:FindFirstChild("UIScale")
+			if us then out[#out + 1] = us end
+		end
+	end)
+	if #out == 0 then
+		pcall(function()
+			for _, g in ipairs(LP.PlayerGui:GetChildren()) do
+				if g:IsA("ScreenGui") and (g.Name == "WindUI" or g.Name:find("WindUI")) then
+					local us = g:FindFirstChild("UIScale")
+					if us then out[#out + 1] = us end
+				end
+			end
+		end)
+	end
+	return out
+end
+
+local function CollectScaleTargets()
+	local out = {}
+	local seen = {}
+	local function add(us)
+		if us and us:IsA("UIScale") and not seen[us] then
+			seen[us] = true
+			out[#out + 1] = us
+		end
+	end
+	pcall(function()
+		if WindUI and WindUI.ScreenGui then add(WindUI.ScreenGui:FindFirstChildWhichIsA("UIScale")) end
+	end)
+	pcall(function()
+		if WindUI and WindUI.NotificationGui then add(WindUI.NotificationGui:FindFirstChildWhichIsA("UIScale")) end
+	end)
+	pcall(function()
+		if WindUI and WindUI.DropdownGui then add(WindUI.DropdownGui:FindFirstChildWhichIsA("UIScale")) end
+	end)
+	pcall(function()
+		local roots = {}
+		if gethui then pcall(function() roots[#roots + 1] = gethui() end) end
+		pcall(function() roots[#roots + 1] = game:GetService("CoreGui") end)
+		pcall(function() roots[#roots + 1] = LP:FindFirstChild("PlayerGui") end)
+		for _, root in ipairs(roots) do
+			if root then
+				for _, d in ipairs(root:GetDescendants()) do
+					if d:IsA("UIScale") and (d.Name == "G2R5xScale" or d.Name == "UIScale") then
+						local p = d.Parent
+						local isWin = false
+						pcall(function()
+							if p and (p.Name == "WindUI" or tostring(p.Name):find("WindUI")) then isWin = true end
+						end)
+						if isWin or d.Name == "G2R5xScale" then add(d) end
+					end
+				end
+			end
+		end
+	end)
+	return out
+end
+
+local function EnsureOwnScale()
+	local own = nil
+	pcall(function()
+		if Window and Window.UIElements and Window.UIElements.Main then
+			local main = Window.UIElements.Main
+			own = main:FindFirstChild("G2R5xScale")
+			if not own then
+				own = Instance.new("UIScale")
+				own.Name = "G2R5xScale"
+				own.Scale = 1
+				own.Parent = main
+			end
+		end
+	end)
+	return own
+end
+
+local function RawSetScale(v)
+	local own = EnsureOwnScale()
+	local targets = CollectScaleTargets()
+	local n = 0
+	for _, us in ipairs(targets) do
+		pcall(function()
+			us.Scale = v
+			n = n + 1
+		end)
+	end
+	pcall(function()
+		if WindUI then WindUI.UIScale = v end
+	end)
+	pcall(function()
+		if Window and Window.SetUIScale then Window:SetUIScale(v) end
+	end)
+	if own then
+		pcall(function() own.Scale = 1 end)
+	else
+		pcall(function()
+			if Window and Window.SetUIScale then Window:SetUIScale(v) end
+		end)
+	end
+	return n
+end
+
+local function RawSetScaleRetry(v)
+	RawSetScale(v)
+	task.spawn(function()
+		task.wait(0.25)
+		pcall(function() RawSetScale(v) end)
+		task.wait(0.45)
+		pcall(function() RawSetScale(v) end)
+	end)
 end
 
 local BaseW, BaseH = nil, nil
@@ -1608,88 +1796,186 @@ local function MeasureBase()
 	pcall(function()
 		if Window and Window.UIElements and Window.UIElements.Main then
 			local a = Window.UIElements.Main.AbsoluteSize
+			local cur = CFG.scale or 1
+			if cur <= 0 then cur = 1 end
 			if a.X > 2 and a.Y > 2 then
-				BaseW = a.X / (CFG.scale or 1)
-				BaseH = a.Y / (CFG.scale or 1)
+				BaseW = a.X / cur
+				BaseH = a.Y / cur
 			end
 		end
 	end)
+	if (not BaseW) or (not BaseH) or BaseW < 40 or BaseH < 40 then
+		BaseW = nil
+		BaseH = nil
+	end
 end
+
+local HardMax = SCALE_MAX
 
 local function DynMax()
 	MeasureBase()
-	if not BaseW or not BaseH then return SCALE_MAX end
+	if not BaseW or not BaseH then return HardMax end
 	local vp = Viewport()
-	local mx = (vp.X * 0.9) / BaseW
-	local my = (vp.Y * 0.9) / BaseH
+	local mx = (vp.X * 0.94) / BaseW
+	local my = (vp.Y * 0.94) / BaseH
 	local m = math.floor(math.min(mx, my) * 100)
 	if m < SCALE_MIN then m = SCALE_MIN end
-	if m > SCALE_MAX then m = SCALE_MAX end
+	if m > HardMax then m = HardMax end
 	return m
 end
 
-local function ClampScale(v)
+local function ClampScale(v, force)
 	v = tonumber(v) or 100
+	if force then
+		if v < SCALE_MIN then v = SCALE_MIN end
+		if v > HardMax then v = HardMax end
+		return v
+	end
 	local mx = DynMax()
 	if v < SCALE_MIN then v = SCALE_MIN end
 	if v > mx then v = mx end
 	return v
 end
 
-local function ApplyScale(pct, quiet)
-	pct = ClampScale(pct)
+local LastScaleMsg = 0
+
+local function ApplyScale(pct, quiet, force)
+	pct = ClampScale(pct, force)
 	CFG.scale = pct / 100
-	pcall(function()
-		if Window and Window.SetUIScale then
-			Window:SetUIScale(CFG.scale)
-			return
-		end
-		if WindUI and WindUI.ScreenGui then
-			local us = WindUI.ScreenGui:FindFirstChild("UIScale")
-			if us then us.Scale = CFG.scale end
-		end
-	end)
+	local n = RawSetScale(CFG.scale)
+	RawSetScaleRetry(CFG.scale)
 	SaveCfg()
-	if not quiet then Notify("界面大小", "已设为 " .. tostring(pct) .. "%", 3) end
+	if not quiet then
+		if tick() - LastScaleMsg > 0.4 then
+			LastScaleMsg = tick()
+			Notify("界面大小", "已设为 " .. tostring(pct) .. "%", 3)
+		end
+	end
+	if n == 0 then
+		Notify("界面大小", "UI 缩放未生效，请重进或换版本", 5)
+	end
+	return n
 end
 
 
-local function FitScale()
-	local vs = Viewport()
-	local main = nil
-	pcall(function()
-		if Window and Window.UIElements and Window.UIElements.Main then
-			main = Window.UIElements.Main
-		end
-	end)
-	local sx, sy = vs.X, vs.Y
-	if main then
+local RescueBtn = nil
+
+local function MakeRescueBtn()
+	local ok = pcall(function()
+		local parent = nil
+		if gethui then pcall(function() parent = gethui() end) end
+		if not parent then pcall(function() parent = game:GetService("CoreGui") end) end
+		if not parent then parent = LP:WaitForChild("PlayerGui") end
+
+		local g = Instance.new("ScreenGui")
+		g.Name = "G2R5xRescue"
+		g.ResetOnSpawn = false
+		g.IgnoreGuiInset = true
+		g.DisplayOrder = 2147483647
+		g.Parent = parent
+
+		local b = Instance.new("TextButton", g)
+		b.Name = "Btn"
+		b.Size = UDim2.new(0, 52, 0, 52)
+		b.Position = UDim2.new(0, 6, 0.5, -26)
+		b.BackgroundColor3 = Color3.fromRGB(196, 44, 44)
+		b.BackgroundTransparency = 0.15
+		b.Text = "100%"
+		b.TextColor3 = Color3.fromRGB(255, 255, 255)
+		b.TextSize = 15
+		b.Font = Enum.Font.GothamBold
+		b.Active = true
+		b.Draggable = false
 		pcall(function()
-			local a = main.AbsoluteSize
-			if a.X > 0 then sx = a.X * CFG.scale end
-			if a.Y > 0 then sy = a.Y * CFG.scale end
+			local c = Instance.new("UICorner", b)
+			c.CornerRadius = UDim.new(0, 26)
 		end)
+		pcall(function()
+			local st = Instance.new("UIStroke", b)
+			st.Color = Color3.fromRGB(255, 255, 255)
+			st.Thickness = 1.5
+			st.Transparency = 0.5
+		end)
+
+		local dragging, dragStart, startPos = false, nil, nil
+		b.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				dragStart = input.Position
+				startPos = b.Position
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then dragging = false end
+				end)
+			end
+		end)
+		UIS.InputChanged:Connect(function(input)
+			if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
+				or input.UserInputType == Enum.UserInputType.Touch) then
+				local delta = input.Position - dragStart
+				b.Position = UDim2.new(
+					startPos.X.Scale, startPos.X.Offset + delta.X,
+					startPos.Y.Scale, startPos.Y.Offset + delta.Y
+				)
+			end
+		end)
+
+		local tapped = 0
+		b.MouseButton1Click:Connect(function()
+			if tick() - tapped < 0.05 then return end
+			tapped = tick()
+			ApplyScale(100, false, true)
+			pcall(function()
+				if SetCfg then end
+			end)
+			Notify("界面大小", "已强制恢复 100%", 4)
+		end)
+
+		RescueBtn = g
+	end)
+	return ok
+end
+
+local function SetRescue(on)
+	if on then
+		if not RescueBtn then MakeRescueBtn() end
+	else
+		if RescueBtn then
+			pcall(function() RescueBtn:Destroy() end)
+			RescueBtn = nil
+		end
 	end
-	local mx = sx / vs.X
-	local my = sy / vs.Y
-	local over = math.max(mx, my)
-	if over <= 0.92 then return nil end
-	local fit = math.floor((CFG.scale / over) * 100 * 0.88)
+end
+
+local function FitScale()
+	MeasureBase()
+	if not BaseW or not BaseH then return nil end
+	local cur = math.floor((CFG.scale or 1) * 100)
+	local w = (BaseW * (CFG.scale or 1))
+	local h = (BaseH * (CFG.scale or 1))
+	local vp = Viewport()
+	local over = math.max(w / vp.X, h / vp.Y)
+	if over <= 0.94 then return nil end
+	local fit = math.floor(cur / over * 0.9)
 	if fit < SCALE_MIN then fit = SCALE_MIN end
 	local mxp = DynMax()
 	if fit > mxp then fit = mxp end
+	if fit >= cur then return nil end
 	return fit
 end
 
 task.spawn(function()
+	task.wait(3)
 	while true do
-		task.wait(1.5)
-		if AutoFitOn and CFG.intro ~= nil then
+		task.wait(2.5)
+		if AutoFitOn then
+			if CFG.lowPerf then task.wait(4) end
 			pcall(function()
 				local fit = FitScale()
-				if fit and math.abs(fit - math.floor(CFG.scale * 100)) > 2 then
-					ApplyScale(fit, false)
+				if fit then
+					ApplyScale(fit, true)
 					Notify("界面大小", "超出屏幕，已自动调整为 " .. tostring(fit) .. "%", 4)
+					task.wait(3)
 				end
 			end)
 		end
@@ -1699,33 +1985,65 @@ end)
 SafeAdd(TabSet, "Section", { Title = "界面大小" })
 SafeAdd(TabSet, "Input", {
 	Title = "缩放百分比",
-	Desc = "输入数字后回车（" .. tostring(SCALE_MIN) .. " - " .. tostring(DynMax()) .. "，超出会自动限制）",
+	Desc = "输入数字后回车（" .. tostring(SCALE_MIN) .. " - " .. tostring(SCALE_MAX) .. "，超出屏幕会自动收小）",
 	Placeholder = "例如 100",
-	Value = tostring(math.floor(CFG.scale * 100)),
+	Value = tostring(math.floor((CFG.scale or 1) * 100)),
 	InputIcon = "percent",
 	Type = "Input",
 	Callback = function(txt)
 		local n = tonumber(tostring(txt or ""))
 		if not n then
-			Notify("界面大小", "请输入数字", 3)
+			Notify("界面大小", "请输入数字，例如 100", 3)
 			return
 		end
-		ApplyScale(n, false)
+		ApplyScale(n, false, true)
 	end,
 })
 SafeAdd(TabSet, "Button", {
 	Title = "恢复 100%",
-	Desc = "一键回到默认大小",
+	Desc = "强制回到 100%，不受自动限制影响",
+	Icon = "rotate-ccw",
 	Callback = function()
-		ApplyScale(100, false)
+		ApplyScale(100, false, true)
+	end,
+})
+SafeAdd(TabSet, "Button", {
+	Title = "缩小一档",
+	Desc = "当前基础上 -10%",
+	Callback = function()
+		ApplyScale(math.floor((CFG.scale or 1) * 100) - 10, false, true)
+	end,
+})
+SafeAdd(TabSet, "Button", {
+	Title = "放大一档",
+	Desc = "当前基础上 +10%",
+	Callback = function()
+		ApplyScale(math.floor((CFG.scale or 1) * 100) + 10, false, true)
+	end,
+})
+SafeAdd(TabSet, "Button", {
+	Title = "适应屏幕",
+	Desc = "自动算出刚好不超出屏幕的大小",
+	Icon = "maximize",
+	Callback = function()
+		MeasureBase()
+		if not BaseW then
+			Notify("界面大小", "还没量到窗口尺寸，稍等再试", 4)
+			return
+		end
+		local mxp = DynMax()
+		ApplyScale(mxp, false, true)
 	end,
 })
 SafeAdd(TabSet, "Toggle", {
 	Title = "自动调节界面大小",
-	Desc = "界面超出或过小时自动调回适合屏幕",
+	Desc = "只在界面超出屏幕时自动收小，不会乱改你的设置",
 	Value = true,
+	Value = AutoFitOn,
 	Callback = function(state)
 		AutoFitOn = state
+		CFG.autoFit = state
+		SaveCfg()
 		Notify("界面大小", state and "自动调节已开启" or "自动调节已关闭", 3)
 	end,
 })
@@ -1777,6 +2095,109 @@ SafeAdd(TabSet, "Button", {
 		task.spawn(function() pcall(PlayIntro) end)
 	end,
 })
+SafeAdd(TabSet, "Section", { Title = "界面与提示" })
+SafeAdd(TabSet, "Toggle", {
+	Title = "界面透明",
+	Desc = "窗口背景半透明",
+	Value = CFG.transparency,
+	Callback = function(state)
+		CFG.transparency = state
+		SaveCfg()
+		pcall(function()
+			if Window and Window.ToggleTransparency then Window:ToggleTransparency(state) end
+		end)
+	end,
+})
+SafeAdd(TabSet, "Toggle", {
+	Title = "侧边栏",
+	Desc = "关闭后隐藏左侧标签栏",
+	Value = CFG.sideBar,
+	Callback = function(state)
+		CFG.sideBar = state
+		SaveCfg()
+		pcall(function()
+			if Window and Window.UIElements and Window.UIElements.SideBar then
+				Window.UIElements.SideBar.Frame.Visible = state
+			end
+		end)
+	end,
+})
+SafeAdd(TabSet, "Toggle", {
+	Title = "通知音效",
+	Desc = "弹通知时带一声提示音",
+	Value = CFG.notifSound,
+	Callback = function(state)
+		CFG.notifSound = state
+		SaveCfg()
+	end,
+})
+SafeAdd(TabSet, "Toggle", {
+	Title = "紧急恢复按钮",
+	Desc = "屏幕左边的小红球，界面调到看不见时点它恢复 100%",
+	Value = CFG.rescue ~= false,
+	Callback = function(state)
+		CFG.rescue = state
+		SaveCfg()
+		SetRescue(state)
+		Notify("设置", state and "紧急按钮已显示" or "紧急按钮已隐藏", 3)
+	end,
+})
+
+SafeAdd(TabSet, "Section", { Title = "脚本行为" })
+SafeAdd(TabSet, "Toggle", {
+	Title = "执行前确认",
+	Desc = "点脚本时先弹一次确认，防止误触",
+	Value = CFG.confirmBeforeRun,
+	Callback = function(state)
+		CFG.confirmBeforeRun = state
+		SaveCfg()
+	end,
+})
+SafeAdd(TabSet, "Toggle", {
+	Title = "运行后自动关闭界面",
+	Desc = "执行完脚本把窗口收起来",
+	Value = CFG.autoHideAfterRun,
+	Callback = function(state)
+		CFG.autoHideAfterRun = state
+		SaveCfg()
+	end,
+})
+SafeAdd(TabSet, "Toggle", {
+	Title = "低性能模式",
+	Desc = "减少后台扫描，机器卡时打开",
+	Value = CFG.lowPerf,
+	Callback = function(state)
+		CFG.lowPerf = state
+		SaveCfg()
+	end,
+})
+SafeAdd(TabSet, "Slider", {
+	Title = "最近记录上限",
+	Desc = "最多保留几条最近运行",
+	Value = { Min = 1, Max = 10, Default = CFG.recentMax },
+	Step = 1,
+	Range = { 1, 10 },
+	CurrentValue = CFG.recentMax,
+	Callback = function(val)
+		if type(val) == "number" then
+			CFG.recentMax = val
+			SaveCfg()
+			while #RECENT > CFG.recentMax do table.remove(RECENT, #RECENT) end
+			FS.Save("recent", RECENT)
+			pcall(RefreshRecent)
+		end
+	end,
+})
+SafeAdd(TabSet, "Toggle", {
+	Title = "搜索显示全部",
+	Desc = "关闭后只显示前 8 条结果",
+	Value = CFG.searchShowAll,
+	Callback = function(state)
+		CFG.searchShowAll = state
+		SaveCfg()
+	end,
+})
+
 SafeAdd(TabSet, "Button", {
 	Title = "清空最近记录",
 	Desc = "删除本地保存的最近运行",
@@ -1798,8 +2219,26 @@ SafeAdd(TabSet, "Button", {
 		CFG.intro = true
 		CFG.introStyle = 1
 		CFG.notifDur = 5
+		CFG.transparency = false
+		CFG.autoFit = true
+		CFG.notifSound = true
+		CFG.confirmBeforeRun = false
+		CFG.recentMax = 3
+		CFG.searchShowAll = true
+		CFG.autoHideAfterRun = false
+		CFG.lowPerf = false
+		CFG.sideBar = true
+		CFG.rescue = true
+		INTRO_STYLE = 1
+		AutoFitOn = true
 		SaveCfg()
-		Notify("设置", "已恢复默认", 4)
+		pcall(function() if WindUI and WindUI.SetTheme then WindUI:SetTheme("Dark") end end)
+		pcall(function()
+			if Window and Window.ToggleTransparency then Window:ToggleTransparency(false) end
+		end)
+		ApplyScale(100, false, true)
+		SetRescue(true)
+		Notify("设置", "已恢复默认并应用", 4)
 	end,
 })
 
@@ -1817,11 +2256,18 @@ end)
 
 _G.__G2R5X_CFG = CFG
 
+task.spawn(function()
+	task.wait(1.5)
+	if CFG.rescue ~= false then pcall(MakeRescueBtn) end
+end)
+
 pcall(function()
 	getgenv().G2R5X = {
 		Lib = SCRIPT_LIB,
 		Recent = RECENT,
 		Run = RunScript,
+		Scale = function(v) return ApplyScale(v, false, true) end,
+		Rescue = function(v) SetRescue(v ~= false) end,
 		PushRecent = PushRecent,
 		RefreshRecent = RefreshRecent,
 		BuildSearch = BuildInlineSearch,
