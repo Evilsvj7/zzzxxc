@@ -299,6 +299,7 @@ loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/d6c11700
 }
 
 local FUN_LIB = {
+	{ name = "控制MPC", cat = "娱乐", code = [[loadstring(game:HttpGet("https://pastebin.com/raw/vFS0vfJa"))()]] },
 	{ name = "伪装脚本", cat = "娱乐", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/YirdeX-Dev/scripts/refs/heads/main/伪装欺骗.lua"))()]] },
 }
 
@@ -499,15 +500,20 @@ end
 
 local applyJump = {}
 local JumpConn = nil
+local JumpConn2 = nil
+local IJStateConn = nil
+
 local function StopJumpLoop()
-	if JumpConn then pcall(function() if JumpConn.Disconnect then JumpConn:Disconnect() end end) end
+	if JumpConn then pcall(function() JumpConn:Disconnect() end) end
+	if JumpConn2 then pcall(function() JumpConn2:Disconnect() end) end
 	JumpConn = nil
+	JumpConn2 = nil
 end
 
 applyJump[1] = function(hum, v)
 	StopJumpLoop()
 	JumpConn = RS.Stepped:Connect(function()
-		if not ModOn then return end
+		if not ModOn or JumpMode ~= 1 then return end
 		pcall(function()
 			local h = GetHum()
 			if not h then return end
@@ -515,13 +521,26 @@ applyJump[1] = function(hum, v)
 			if math.abs((h.JumpPower or 0) - v) > 0.01 then h.JumpPower = v end
 		end)
 	end)
+	JumpConn2 = RS.Heartbeat:Connect(function()
+		if not ModOn or JumpMode ~= 1 then return end
+		pcall(function()
+			local h = GetHum()
+			if not h then return end
+			if h.UseJumpPower ~= true then h.UseJumpPower = true end
+			if math.abs((h.JumpPower or 0) - v) > 0.01 then h.JumpPower = v end
+		end)
+	end)
+	pcall(function()
+		local h = GetHum()
+		if h then h.UseJumpPower = true h.JumpPower = v end
+	end)
 end
 
 applyJump[2] = function(hum, v)
 	StopJumpLoop()
 	local target = v / 7.5
 	JumpConn = RS.Stepped:Connect(function()
-		if not ModOn then return end
+		if not ModOn or JumpMode ~= 2 then return end
 		pcall(function()
 			local h = GetHum()
 			if not h then return end
@@ -529,26 +548,36 @@ applyJump[2] = function(hum, v)
 			if math.abs((h.JumpHeight or 0) - target) > 0.01 then h.JumpHeight = target end
 		end)
 	end)
+	JumpConn2 = RS.Heartbeat:Connect(function()
+		if not ModOn or JumpMode ~= 2 then return end
+		pcall(function()
+			local h = GetHum()
+			if not h then return end
+			if h.UseJumpPower ~= false then h.UseJumpPower = false end
+			if math.abs((h.JumpHeight or 0) - target) > 0.01 then h.JumpHeight = target end
+		end)
+	end)
+	pcall(function()
+		local h = GetHum()
+		if h then h.UseJumpPower = false h.JumpHeight = target end
+	end)
 end
 
 applyJump[3] = function(hum, v)
 	StopJumpLoop()
-	local conn
-	conn = UIS.JumpRequest:Connect(function()
-		if not ModOn then return end
+	JumpConn = UIS.JumpRequest:Connect(function()
+		if not ModOn or JumpMode ~= 3 then return end
 		pcall(function()
 			local h = GetHum()
 			local r = GetRoot()
 			if not (h and r) then return end
 			if h:GetState() == Enum.HumanoidStateType.Dead then return end
+			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
 			r.AssemblyLinearVelocity = Vector3.new(
-				r.AssemblyLinearVelocity.X,
-				v,
-				r.AssemblyLinearVelocity.Z
+				r.AssemblyLinearVelocity.X, v, r.AssemblyLinearVelocity.Z
 			)
 		end)
 	end)
-	JumpConn = conn
 end
 
 local function DoSpeed()
@@ -594,6 +623,18 @@ local IJCool = 0.12
 local IJAir = 0
 local IJMax = 0
 
+local function BindIJReset()
+	if IJStateConn then pcall(function() IJStateConn:Disconnect() end) end
+	IJStateConn = nil
+	pcall(function()
+		local h = GetHum()
+		if not h then return end
+		IJStateConn = h.StateChanged:Connect(function(_, ns)
+			if ns == Enum.HumanoidStateType.Landed then IJAir = 0 end
+		end)
+	end)
+end
+
 local function StopIJ()
 	if IJConn then pcall(function() IJConn:Disconnect() end) end
 	IJConn = nil
@@ -604,14 +645,15 @@ local applyIJ = {}
 
 applyIJ[1] = function(hum, v)
 	StopIJ()
+	BindIJReset()
 	IJConn = UIS.JumpRequest:Connect(function()
-		if not IJOn then return end
+		if not IJOn or IJMode ~= 1 then return end
 		pcall(function()
 			local h = GetHum()
 			if not h then return end
 			if h:GetState() == Enum.HumanoidStateType.Dead then return end
-			if IJAirCap() then return end
-			if not IsGrounded(h) then CountAir() end
+			if IJMax > 0 and IJAir >= IJMax and not IsGrounded(h) then return end
+			if not IsGrounded(h) then IJAir = IJAir + 1 end
 			h:ChangeState(Enum.HumanoidStateType.Jumping)
 		end)
 	end)
@@ -619,27 +661,20 @@ end
 
 applyIJ[2] = function(hum, v)
 	StopIJ()
-	pcall(function()
-		local h = GetHum()
-		if h then
-			h.StateChanged:Connect(function(_, ns)
-				if ns == Enum.HumanoidStateType.Landed then IJAir = 0 end
-			end)
-		end
-	end)
+	BindIJReset()
 	IJConn = UIS.JumpRequest:Connect(function()
-		if not IJOn then return end
+		if not IJOn or IJMode ~= 2 then return end
 		pcall(function()
 			local h = GetHum()
 			if not h then return end
 			if h:GetState() == Enum.HumanoidStateType.Dead then return end
-			if IJAirCap() then return end
-			if not IsGrounded(h) then
-				CountAir()
+			if IsGrounded(h) then
+				IJAir = 0
+			else
+				if IJMax > 0 and IJAir >= IJMax then return end
+				IJAir = IJAir + 1
 				h:ChangeState(Enum.HumanoidStateType.Jumping)
 				task.wait(IJCool)
-			else
-				IJAir = 0
 			end
 		end)
 	end)
@@ -647,20 +682,19 @@ end
 
 applyIJ[3] = function(hum, v)
 	StopIJ()
+	BindIJReset()
 	IJConn = UIS.JumpRequest:Connect(function()
-		if not IJOn then return end
+		if not IJOn or IJMode ~= 3 then return end
 		pcall(function()
 			local h = GetHum()
 			local r = GetRoot()
 			if not (h and r) then return end
 			if h:GetState() == Enum.HumanoidStateType.Dead then return end
-			if IJAirCap() then return end
-			if not IsGrounded(h) then CountAir() end
+			if IJMax > 0 and IJAir >= IJMax and not IsGrounded(h) then return end
+			if not IsGrounded(h) then IJAir = IJAir + 1 end
 			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
 			r.AssemblyLinearVelocity = Vector3.new(
-				r.AssemblyLinearVelocity.X,
-				v,
-				r.AssemblyLinearVelocity.Z
+				r.AssemblyLinearVelocity.X, v, r.AssemblyLinearVelocity.Z
 			)
 		end)
 	end)
@@ -688,10 +722,91 @@ local function CharParts()
 	return out
 end
 
+local NCLastSafe = nil
+local NCLastSafeT = 0
+
+local function RootPart()
+	local c = LP.Character
+	if not c then return nil end
+	return c:FindFirstChild("HumanoidRootPart") or c.PrimaryPart
+end
+
+local function OverlapCount(cf)
+	local n = 0
+	pcall(function()
+		local box = Instance.new("Part")
+		box.Anchored = true
+		box.CanCollide = false
+		box.Transparency = 1
+		box.Size = Vector3.new(3.2, 5.2, 3.2)
+		box.CFrame = cf
+		box.Parent = WS
+		local params = OverlapParams.new()
+		params.FilterType = Enum.RaycastFilterType.Blacklist
+		params.FilterDescendantsInstances = { LP.Character }
+		local list = WS:GetPartBoundsInBox(cf, box.Size, params)
+		n = #list
+		box:Destroy()
+	end)
+	return n
+end
+
+local function RecordSafe()
+	local r = RootPart()
+	if not r then return end
+	if OverlapCount(r.CFrame) == 0 then
+		NCLastSafe = r.CFrame
+		NCLastSafeT = tick()
+	end
+end
+
+local function FindFreeSpot()
+	local r = RootPart()
+	if not r then return nil end
+	local origin = r.Position
+	local dirs = {}
+	for a = 0, 7 do
+		local ang = (math.pi * 2) * (a / 8)
+		dirs[#dirs + 1] = Vector3.new(math.cos(ang), 0, math.sin(ang))
+	end
+	dirs[#dirs + 1] = Vector3.new(0, 1, 0)
+	dirs[#dirs + 1] = Vector3.new(0, -1, 0)
+	for _, d in ipairs(dirs) do
+		for dist = 3, 40, 2.5 do
+			local cf = CFrame.new(origin + (d * dist))
+			if OverlapCount(cf) == 0 then return cf end
+		end
+	end
+	return nil
+end
+
+local function Unstuck()
+	local r = RootPart()
+	if not r then return false end
+	if OverlapCount(r.CFrame) == 0 then return true end
+	local h = nil
+	pcall(function() h = LP.Character:FindFirstChildOfClass("Humanoid") end)
+	if NCLastSafe and (tick() - NCLastSafeT) < 600 then
+		if OverlapCount(NCLastSafe) == 0 then
+			pcall(function() r.CFrame = NCLastSafe + Vector3.new(0, 1, 0) end)
+			if OverlapCount(r.CFrame) == 0 then return true end
+		end
+	end
+	local spot = FindFreeSpot()
+	if spot then
+		pcall(function() r.CFrame = spot + Vector3.new(0, 1, 0) end)
+		if OverlapCount(r.CFrame) == 0 then return true end
+	end
+	return false
+end
+
 local function StopNC()
 	NCOn = false
 	if NCConn then pcall(function() NCConn:Disconnect() end) end
 	NCConn = nil
+	local ok = false
+	pcall(function() ok = Unstuck() end)
+	task.wait(0.08)
 	pcall(function()
 		for p, v in pairs(NCSaved) do p.CanCollide = v end
 	end)
@@ -702,6 +817,10 @@ local function StopNC()
 			pcall(function() ps:SetPartCollisionGroup(p, "Default") end)
 		end
 	end)
+	if not ok then
+		Notify("穿墙", "未能自动脱困，请点『卡墙脱困』", 5)
+	end
+	return ok
 end
 
 local applyNC = {}
@@ -771,6 +890,13 @@ local function DoIJ()
 		if h then applyIJ[IJMode](h, IJVal) end
 	end)
 end
+task.spawn(function()
+	while true do
+		task.wait(0.6)
+		if NCOn then pcall(RecordSafe) end
+	end
+end)
+
 local function DoNC()
 	pcall(function()
 		applyNC[NCMode]()
@@ -1022,6 +1148,8 @@ TabLocal:Toggle({
 	Callback = function(state)
 		if state then
 			NCOn = true
+			NCLastSafe = nil
+			RecordSafe()
 			DoNC()
 			Notify("本地修改", "穿墙已开启", 3)
 		else
@@ -1039,6 +1167,20 @@ SafeAdd(TabLocal, "Slider", {
 	CurrentValue = 3,
 	Callback = function(val)
 		if type(val) == "number" then NCVal = val end
+	end,
+})
+SafeAdd(TabLocal, "Button", {
+	Title = "卡墙脱困",
+	Desc = "被卡在墙里时点这个，自动挪到最近的空地",
+	Icon = "log-out",
+	Callback = function()
+		local ok = false
+		pcall(function() ok = Unstuck() end)
+		if ok then
+			Notify("脱困", "已挪出墙体", 4)
+		else
+			Notify("脱困", "没找到空地，试试重新开穿墙走出来", 5)
+		end
 	end,
 })
 SafeAdd(TabLocal, "Dropdown", {
@@ -1084,6 +1226,26 @@ end
 --------------------------------------------------------------------------------
 -- 关于
 --------------------------------------------------------------------------------
+LP.CharacterAdded:Connect(function()
+	task.wait(1.2)
+	pcall(function()
+		if ModOn then
+			IJAir = 0
+			if JumpMode == 1 or JumpMode == 2 then DoJump() else DoJump() end
+			DoSpeed()
+			if SpeedAuto or JumpAuto then AutoWatch() end
+		end
+		if IJOn then StopIJ() DoIJ() end
+		if NCOn then
+			NCSaved = {}
+			NCLastSafe = nil
+			task.wait(0.3)
+			RecordSafe()
+			DoNC()
+		end
+	end)
+end)
+
 local TabAbout = SafeTab({ Title = "关于", Icon = "info" })
 
 SafeAdd(TabAbout, "Section", { Title = "关于作者" })
@@ -1434,10 +1596,43 @@ local SCALE_MIN = 60
 local SCALE_MAX = 300
 local AutoFitOn = true
 
+local function Viewport()
+	local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
+	if cam then return cam.ViewportSize end
+	return Vector2.new(1280, 720)
+end
+
+local BaseW, BaseH = nil, nil
+
+local function MeasureBase()
+	pcall(function()
+		if Window and Window.UIElements and Window.UIElements.Main then
+			local a = Window.UIElements.Main.AbsoluteSize
+			if a.X > 2 and a.Y > 2 then
+				BaseW = a.X / (CFG.scale or 1)
+				BaseH = a.Y / (CFG.scale or 1)
+			end
+		end
+	end)
+end
+
+local function DynMax()
+	MeasureBase()
+	if not BaseW or not BaseH then return SCALE_MAX end
+	local vp = Viewport()
+	local mx = (vp.X * 0.9) / BaseW
+	local my = (vp.Y * 0.9) / BaseH
+	local m = math.floor(math.min(mx, my) * 100)
+	if m < SCALE_MIN then m = SCALE_MIN end
+	if m > SCALE_MAX then m = SCALE_MAX end
+	return m
+end
+
 local function ClampScale(v)
 	v = tonumber(v) or 100
+	local mx = DynMax()
 	if v < SCALE_MIN then v = SCALE_MIN end
-	if v > SCALE_MAX then v = SCALE_MAX end
+	if v > mx then v = mx end
 	return v
 end
 
@@ -1458,11 +1653,6 @@ local function ApplyScale(pct, quiet)
 	if not quiet then Notify("界面大小", "已设为 " .. tostring(pct) .. "%", 3) end
 end
 
-local function Viewport()
-	local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
-	if cam then return cam.ViewportSize end
-	return Vector2.new(1280, 720)
-end
 
 local function FitScale()
 	local vs = Viewport()
@@ -1484,7 +1674,11 @@ local function FitScale()
 	local my = sy / vs.Y
 	local over = math.max(mx, my)
 	if over <= 0.92 then return nil end
-	return ClampScale(math.floor((CFG.scale / over) * 100 * 0.9))
+	local fit = math.floor((CFG.scale / over) * 100 * 0.88)
+	if fit < SCALE_MIN then fit = SCALE_MIN end
+	local mxp = DynMax()
+	if fit > mxp then fit = mxp end
+	return fit
 end
 
 task.spawn(function()
@@ -1505,7 +1699,7 @@ end)
 SafeAdd(TabSet, "Section", { Title = "界面大小" })
 SafeAdd(TabSet, "Input", {
 	Title = "缩放百分比",
-	Desc = "输入数字后回车（" .. tostring(SCALE_MIN) .. " - " .. tostring(SCALE_MAX) .. "）",
+	Desc = "输入数字后回车（" .. tostring(SCALE_MIN) .. " - " .. tostring(DynMax()) .. "，超出会自动限制）",
 	Placeholder = "例如 100",
 	Value = tostring(math.floor(CFG.scale * 100)),
 	InputIcon = "percent",
