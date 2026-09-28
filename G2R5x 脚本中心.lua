@@ -14,6 +14,29 @@ local HUB_CN = "脚本中心"
 --------------------------------------------------------------------------------
 -- 开场动画
 --------------------------------------------------------------------------------
+local function UCharCount(str)
+	if type(utf8) == "table" and type(utf8.len) == "function" then
+		local n = nil
+		pcall(function() n = utf8.len(str) end)
+		if n then return n end
+	end
+	return #str
+end
+
+local function USub(str, i)
+	if type(utf8) == "table" and type(utf8.offset) == "function" then
+		local ok, e = pcall(function() return utf8.offset(str, i + 1) end)
+		if ok and e then return string.sub(str, 1, e - 1) end
+		local ok2, st = pcall(function() return utf8.offset(str, i) end)
+		if ok2 and st then
+			local code = nil
+			pcall(function() code = utf8.codepoint(str, st) end)
+			if code then return string.sub(str, 1, st - 1) .. utf8.char(code) end
+		end
+	end
+	return string.sub(str, 1, i)
+end
+
 local function MkIntroGui()
 	local pg = LP:WaitForChild("PlayerGui")
 	local gui = Instance.new("ScreenGui")
@@ -140,16 +163,18 @@ introFn[3] = function()
 	cn.TextTransparency = 0
 	sub.TextTransparency = 0
 	task.spawn(function()
-		for i = 1, #HUB_NAME do
+		local nEn = UCharCount(HUB_NAME)
+		for i = 1, nEn do
 			if not gui.Parent then return end
-			en.Text = string.sub(HUB_NAME, 1, i)
+			en.Text = USub(HUB_NAME, i)
 			task.wait(0.09)
 		end
 		TS:Create(bar, TweenInfo.new(0.3), { BackgroundTransparency = 0 }):Play()
 		task.wait(0.3)
-		for i = 1, #HUB_CN do
+		local nCn = UCharCount(HUB_CN)
+		for i = 1, nCn do
 			if not gui.Parent then return end
-			cn.Text = string.sub(HUB_CN, 1, i)
+			cn.Text = USub(HUB_CN, i)
 			task.wait(0.11)
 		end
 	end)
@@ -265,6 +290,7 @@ local SCRIPT_LIB = {
 	{ name = "ROBV4脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/idrobsc/rob_script/refs/heads/main/rob.v4"))()]] },
 	{ name = "DB脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/Lisz123456789/7891DBNB/main/DB服务器"))()]] },
 	{ name = "Atomic脚本免费版", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/123fa98/Xi_Pro/refs/heads/main/Atomic-Script"))()]] },
+	{ name = "RT脚本免费版", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://gitee.com/founder-of-xt/rt-script-1/raw/master/script.lua",true))()]] },
 	{ name = "寒脚本", cat = "普通脚本", code = [[getgenv().SCRIPT_KEY="ec1ecb11-0158-4854-b588-03f5c4c2ab7b";
 loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/d6c1170046d31cebd08f3d38ad1e462e19c29de580b544c6dd7088c2f1de0160/download"))()]] },
 	{ name = "安脚本中心", cat = "脚本中心", code = [[loadstring(game:HttpGet(('https://raw.githubusercontent.com/wucan114514/gegeyxjb/main/oww')))()]] },
@@ -472,32 +498,57 @@ applySpeed[3] = function(hum, v)
 end
 
 local applyJump = {}
+local JumpConn = nil
+local function StopJumpLoop()
+	if JumpConn then pcall(function() if JumpConn.Disconnect then JumpConn:Disconnect() end end) end
+	JumpConn = nil
+end
+
 applyJump[1] = function(hum, v)
-	pcall(function() hum.JumpPower = v end)
-	pcall(function() hum.UseJumpPower = true end)
-end
-applyJump[2] = function(hum, v)
-	pcall(function() hum.UseJumpPower = false end)
-	pcall(function() hum.JumpHeight = v / 7.5 end)
-end
-applyJump[3] = function(hum, v)
-	pcall(function() hum.JumpPower = 50 end)
-	task.spawn(function()
-		while ModOn and JumpMode == 3 do
-			local conn
-			conn = UIS.JumpRequest:Connect(function()
-				pcall(function()
-					local h = GetHum()
-					local r = GetRoot()
-					if h and r and h:GetState() ~= Enum.HumanoidStateType.Jumping then
-						r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, v, r.AssemblyLinearVelocity.Z)
-					end
-				end)
-			end)
-			while ModOn and JumpMode == 3 do RS.Heartbeat:Wait() end
-			pcall(function() if conn then conn:Disconnect() end end)
-		end
+	StopJumpLoop()
+	JumpConn = RS.Stepped:Connect(function()
+		if not ModOn then return end
+		pcall(function()
+			local h = GetHum()
+			if not h then return end
+			if h.UseJumpPower ~= true then h.UseJumpPower = true end
+			if math.abs((h.JumpPower or 0) - v) > 0.01 then h.JumpPower = v end
+		end)
 	end)
+end
+
+applyJump[2] = function(hum, v)
+	StopJumpLoop()
+	local target = v / 7.5
+	JumpConn = RS.Stepped:Connect(function()
+		if not ModOn then return end
+		pcall(function()
+			local h = GetHum()
+			if not h then return end
+			if h.UseJumpPower ~= false then h.UseJumpPower = false end
+			if math.abs((h.JumpHeight or 0) - target) > 0.01 then h.JumpHeight = target end
+		end)
+	end)
+end
+
+applyJump[3] = function(hum, v)
+	StopJumpLoop()
+	local conn
+	conn = UIS.JumpRequest:Connect(function()
+		if not ModOn then return end
+		pcall(function()
+			local h = GetHum()
+			local r = GetRoot()
+			if not (h and r) then return end
+			if h:GetState() == Enum.HumanoidStateType.Dead then return end
+			r.AssemblyLinearVelocity = Vector3.new(
+				r.AssemblyLinearVelocity.X,
+				v,
+				r.AssemblyLinearVelocity.Z
+			)
+		end)
+	end)
+	JumpConn = conn
 end
 
 local function DoSpeed()
@@ -516,6 +567,23 @@ end
 --------------------------------------------------------------------------------
 -- 无限跳跃 3 种方式
 --------------------------------------------------------------------------------
+local function IsGrounded(h)
+	local st = h:GetState()
+	if st == Enum.HumanoidStateType.Running then return true end
+	if st == Enum.HumanoidStateType.RunningNoPhysics then return true end
+	if st == Enum.HumanoidStateType.Landed then return true end
+	local fm = nil
+	pcall(function() fm = h.FloorMaterial end)
+	if fm ~= nil and fm ~= Enum.Material.Air then return true end
+	return false
+end
+local function IJAirCap()
+	return (IJMax > 0) and (IJAir >= IJMax)
+end
+local function CountAir()
+	IJAir = IJAir + 1
+end
+
 local IJ_MODES = { "方式一 状态重置", "方式二 冷却计数", "方式三 速度注入" }
 local IJMode = 1
 local IJAuto = true
@@ -542,6 +610,8 @@ applyIJ[1] = function(hum, v)
 			local h = GetHum()
 			if not h then return end
 			if h:GetState() == Enum.HumanoidStateType.Dead then return end
+			if IJAirCap() then return end
+			if not IsGrounded(h) then CountAir() end
 			h:ChangeState(Enum.HumanoidStateType.Jumping)
 		end)
 	end)
@@ -563,13 +633,9 @@ applyIJ[2] = function(hum, v)
 			local h = GetHum()
 			if not h then return end
 			if h:GetState() == Enum.HumanoidStateType.Dead then return end
-			if IJMax > 0 and IJAir >= IJMax then return end
-			local st = h:GetState()
-			local grounded = (st == Enum.HumanoidStateType.Running)
-				or (st == Enum.HumanoidStateType.RunningNoPhysics)
-				or (h.FloorMaterial ~= Enum.Material.Air)
-			if not grounded then
-				IJAir = IJAir + 1
+			if IJAirCap() then return end
+			if not IsGrounded(h) then
+				CountAir()
 				h:ChangeState(Enum.HumanoidStateType.Jumping)
 				task.wait(IJCool)
 			else
@@ -588,6 +654,8 @@ applyIJ[3] = function(hum, v)
 			local r = GetRoot()
 			if not (h and r) then return end
 			if h:GetState() == Enum.HumanoidStateType.Dead then return end
+			if IJAirCap() then return end
+			if not IsGrounded(h) then CountAir() end
 			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
 			r.AssemblyLinearVelocity = Vector3.new(
 				r.AssemblyLinearVelocity.X,
@@ -715,37 +783,54 @@ local function AutoWatch()
 			pcall(function()
 				local h = GetHum()
 				if not h then return end
+
 				if SpeedAuto then
-					local ok = pcall(function() return h.WalkSpeed end)
-					if ok and SpeedMode == 1 then
-						if math.abs(h.WalkSpeed - SpeedVal) > 1 then
+					local ws = nil
+					pcall(function() ws = h.WalkSpeed end)
+					if SpeedMode == 1 then
+						if ws == nil or math.abs(ws - SpeedVal) > 1 then
 							SpeedMode = 2
 							Notify("速度", "方式一被覆盖，切到方式二", 3)
 							DoSpeed()
-						elseif SpeedMode == 2 then
-							local r = GetRoot()
-							if r then
-								local sp = Vector3.new(r.AssemblyLinearVelocity.X, 0, r.AssemblyLinearVelocity.Z).Magnitude
-								if h.MoveDirection.Magnitude > 0.01 and sp < SpeedVal * 0.5 then
-									SpeedMode = 3
-									Notify("速度", "方式二无效，切到方式三", 3)
-									DoSpeed()
-								end
+						end
+					elseif SpeedMode == 2 then
+						local r = GetRoot()
+						if r then
+							local mv = h.MoveDirection
+							local flat = Vector3.new(r.AssemblyLinearVelocity.X, 0, r.AssemblyLinearVelocity.Z).Magnitude
+							if mv.Magnitude > 0.01 and flat < (SpeedVal * 0.4) then
+								SpeedMode = 3
+								Notify("速度", "方式二无效，切到方式三", 3)
+								DoSpeed()
+							end
+						end
+					elseif SpeedMode == 3 then
+						local r = GetRoot()
+						if r then
+							local mv = h.MoveDirection
+							local flat = Vector3.new(r.AssemblyLinearVelocity.X, 0, r.AssemblyLinearVelocity.Z).Magnitude
+							if mv.Magnitude > 0.01 and flat < (SpeedVal * 0.4) then
+								SpeedMode = 1
+								Notify("速度", "回到方式一", 3)
+								DoSpeed()
 							end
 						end
 					end
 				end
+
 				if JumpAuto then
+					local jp, jh, ujp = nil, nil, nil
+					pcall(function() jp = h.JumpPower end)
+					pcall(function() jh = h.JumpHeight end)
+					pcall(function() ujp = h.UseJumpPower end)
 					if JumpMode == 1 then
-						local ok = pcall(function() return h.JumpPower end)
-						if ok and math.abs(h.JumpPower - JumpVal) > 1 then
+						if jp == nil or ujp ~= true or math.abs(jp - JumpVal) > 1 then
 							JumpMode = 2
 							Notify("跳跃", "方式一被覆盖，切到方式二", 3)
 							DoJump()
 						end
 					elseif JumpMode == 2 then
-						local ok2 = pcall(function() return h.JumpHeight end)
-						if (not ok2) or (h.JumpHeight == nil) or h.JumpHeight <= 0 then
+						if jh == nil or ujp ~= false or jh <= 0 then
 							JumpMode = 3
 							Notify("跳跃", "方式二不支持，切到方式三", 3)
 							DoJump()
@@ -769,9 +854,10 @@ TabLocal:Toggle({
 			AutoWatch()
 			Notify("本地修改", "已开启", 3)
 		else
+			StopJumpLoop()
 			pcall(function()
 				local h = GetHum()
-				if h then h.WalkSpeed = 16 h.JumpPower = 50 end
+				if h then h.WalkSpeed = 16 h.JumpPower = 50 h.UseJumpPower = true end
 				if VelObj then VelObj:Destroy() VelObj = nil end
 			end)
 			Notify("本地修改", "已关闭", 3)
@@ -1344,30 +1430,112 @@ SafeAdd(TabSet, "Dropdown", {
 		SaveCfg()
 	end,
 })
-SafeAdd(TabSet, "Slider", {
-	Title = "界面大小",
-	Desc = "缩放 UI",
-	Value = { Min = 60, Max = 150, Default = math.floor(CFG.scale * 100) },
-	Step = 1,
-	Range = { 60, 150 },
-	CurrentValue = math.floor(CFG.scale * 100),
-	Callback = function(val)
-		if type(val) == "number" then
-			CFG.scale = val / 100
+local SCALE_MIN = 60
+local SCALE_MAX = 300
+local AutoFitOn = true
+
+local function ClampScale(v)
+	v = tonumber(v) or 100
+	if v < SCALE_MIN then v = SCALE_MIN end
+	if v > SCALE_MAX then v = SCALE_MAX end
+	return v
+end
+
+local function ApplyScale(pct, quiet)
+	pct = ClampScale(pct)
+	CFG.scale = pct / 100
+	pcall(function()
+		if Window and Window.SetUIScale then
+			Window:SetUIScale(CFG.scale)
+			return
+		end
+		if WindUI and WindUI.ScreenGui then
+			local us = WindUI.ScreenGui:FindFirstChild("UIScale")
+			if us then us.Scale = CFG.scale end
+		end
+	end)
+	SaveCfg()
+	if not quiet then Notify("界面大小", "已设为 " .. tostring(pct) .. "%", 3) end
+end
+
+local function Viewport()
+	local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
+	if cam then return cam.ViewportSize end
+	return Vector2.new(1280, 720)
+end
+
+local function FitScale()
+	local vs = Viewport()
+	local main = nil
+	pcall(function()
+		if Window and Window.UIElements and Window.UIElements.Main then
+			main = Window.UIElements.Main
+		end
+	end)
+	local sx, sy = vs.X, vs.Y
+	if main then
+		pcall(function()
+			local a = main.AbsoluteSize
+			if a.X > 0 then sx = a.X * CFG.scale end
+			if a.Y > 0 then sy = a.Y * CFG.scale end
+		end)
+	end
+	local mx = sx / vs.X
+	local my = sy / vs.Y
+	local over = math.max(mx, my)
+	if over <= 0.92 then return nil end
+	return ClampScale(math.floor((CFG.scale / over) * 100 * 0.9))
+end
+
+task.spawn(function()
+	while true do
+		task.wait(1.5)
+		if AutoFitOn and CFG.intro ~= nil then
 			pcall(function()
-				if Window and Window.SetUIScale then
-					Window:SetUIScale(CFG.scale)
-					return
-				end
-				if WindUI and WindUI.ScreenGui then
-					local us = WindUI.ScreenGui:FindFirstChild("UIScale")
-					if us then us.Scale = CFG.scale end
+				local fit = FitScale()
+				if fit and math.abs(fit - math.floor(CFG.scale * 100)) > 2 then
+					ApplyScale(fit, false)
+					Notify("界面大小", "超出屏幕，已自动调整为 " .. tostring(fit) .. "%", 4)
 				end
 			end)
-			SaveCfg()
 		end
+	end
+end)
+
+SafeAdd(TabSet, "Section", { Title = "界面大小" })
+SafeAdd(TabSet, "Input", {
+	Title = "缩放百分比",
+	Desc = "输入数字后回车（" .. tostring(SCALE_MIN) .. " - " .. tostring(SCALE_MAX) .. "）",
+	Placeholder = "例如 100",
+	Value = tostring(math.floor(CFG.scale * 100)),
+	InputIcon = "percent",
+	Type = "Input",
+	Callback = function(txt)
+		local n = tonumber(tostring(txt or ""))
+		if not n then
+			Notify("界面大小", "请输入数字", 3)
+			return
+		end
+		ApplyScale(n, false)
 	end,
 })
+SafeAdd(TabSet, "Button", {
+	Title = "恢复 100%",
+	Desc = "一键回到默认大小",
+	Callback = function()
+		ApplyScale(100, false)
+	end,
+})
+SafeAdd(TabSet, "Toggle", {
+	Title = "自动调节界面大小",
+	Desc = "界面超出或过小时自动调回适合屏幕",
+	Value = true,
+	Callback = function(state)
+		AutoFitOn = state
+		Notify("界面大小", state and "自动调节已开启" or "自动调节已关闭", 3)
+	end,
+})
+
 SafeAdd(TabSet, "Slider", {
 	Title = "通知停留时间",
 	Desc = "单位: 秒",
