@@ -97,7 +97,11 @@ local function PlayIntro()
 end
 
 task.spawn(function()
-	pcall(PlayIntro)
+	task.spawn(function()
+		task.wait(0.2)
+		if _G.__G2R5X_CFG and _G.__G2R5X_CFG.intro == false then return end
+		pcall(PlayIntro)
+	end)
 end)
 
 --------------------------------------------------------------------------------
@@ -146,6 +150,39 @@ local function Notify(t1, t2, dur)
 end
 
 --------------------------------------------------------------------------------
+-- 本地存档（换服务器 / 重进后仍然保留）
+--------------------------------------------------------------------------------
+local FS = {}
+FS.ok = false
+pcall(function()
+	if type(writefile) == "function" and type(readfile) == "function" and type(isfile) == "function" then
+		FS.ok = true
+	end
+end)
+local SAVE_DIR = "G2R5x"
+function FS.Save(name, data)
+	if not FS.ok then return false end
+	local ok = pcall(function()
+		if not isfolder(SAVE_DIR) then pcall(makefolder, SAVE_DIR) end
+		local hs = game:GetService("HttpService")
+		writefile(SAVE_DIR .. "/" .. name .. ".json", hs:JSONEncode(data))
+	end)
+	return ok
+end
+function FS.Load(name)
+	if not FS.ok then return nil end
+	local out = nil
+	pcall(function()
+		local path = SAVE_DIR .. "/" .. name .. ".json"
+		if isfile(path) then
+			local hs = game:GetService("HttpService")
+			out = hs:JSONDecode(readfile(path))
+		end
+	end)
+	return out
+end
+
+--------------------------------------------------------------------------------
 -- 脚本库
 --------------------------------------------------------------------------------
 local SCRIPT_LIB = {
@@ -159,8 +196,17 @@ local SCRIPT_LIB = {
 	{ name = "Atomic脚本免费版", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/123fa98/Xi_Pro/refs/heads/main/Atomic-Script"))()]] },
 	{ name = "寒脚本", cat = "普通脚本", code = [[getgenv().SCRIPT_KEY="ec1ecb11-0158-4854-b588-03f5c4c2ab7b";
 loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/d6c1170046d31cebd08f3d38ad1e462e19c29de580b544c6dd7088c2f1de0160/download"))()]] },
+	{ name = "安脚本中心", cat = "脚本中心", code = [[loadstring(game:HttpGet(('https://raw.githubusercontent.com/wucan114514/gegeyxjb/main/oww')))()]] },
+	{ name = "BS黑洞中心", cat = "脚本中心", code = [[loadstring(game:HttpGet("https://gitee.com/BS_script/script/raw/master/BS_Script.Luau"))()]] },
 	{ name = "情云脚本中心", cat = "脚本中心", code = [[loadstring(utf8.char((function() return table.unpack({108,111,97,100,115,116,114,105,110,103,40,103,97,109,101,58,72,116,116,112,71,101,116,40,34,104,116,116,112,115,58,47,47,114,97,119,46,103,105,116,104,117,98,117,115,101,114,99,111,110,116,101,110,116,46,99,111,109,47,67,104,105,110,97,81,89,47,45,47,109,97,105,110,47,37,69,54,37,56,51,37,56,53,37,69,52,37,66,65,37,57,49,34,41,41,40,41})end)()))()]] },
 }
+
+local FUN_LIB = {
+	{ name = "伪装脚本", cat = "娱乐", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/YirdeX-Dev/scripts/refs/heads/main/伪装欺骗.lua"))()]] },
+}
+
+local MAIN_LINK = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/Evilsvj7/zzzxxc/refs/heads/main/G2R5x%20%E8%84%9A%E6%9C%AC%E4%B8%AD%E5%BF%83.lua"))()
+]]
 
 local function SafeAdd(tab, method, cfg)
 	if not tab then return nil end
@@ -180,20 +226,20 @@ local PushRecent
 local RefreshRecent
 
 local function RunScript(entry)
-	Notify("G2R5x", "正在执行: " .. entry.name, 3)
+	Notify("G2R5x 脚本中心", "正在执行...", 3)
 	local f, err = loadstring(entry.code)
 	if not f then
-		Notify("执行失败", "语法错误: " .. tostring(err):sub(1, 60), 5)
+		Notify("G2R5x 脚本中心", "执行失败，换一个试试", 5)
 		warn("[G2R5x] " .. entry.name .. " 语法错误: " .. tostring(err))
 		return false
 	end
 	local ok, rerr = pcall(f)
 	if not ok then
-		Notify("执行失败", tostring(rerr):sub(1, 60), 5)
+		Notify("G2R5x 脚本中心", "执行失败，换一个试试", 5)
 		warn("[G2R5x] " .. entry.name .. " 运行错误: " .. tostring(rerr))
 		return false
 	end
-	Notify("执行成功", entry.name .. " 已运行", 4)
+	Notify("G2R5x 脚本中心", "执行完成", 4)
 	if PushRecent then pcall(PushRecent, entry) end
 	return true
 end
@@ -206,7 +252,7 @@ local uiOk, uiErr = pcall(function()
 	WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 end)
 if not uiOk or not WindUI then
-	Notify("G2R5x", "UI 库加载失败，功能不可用", 6)
+	Notify("G2R5x 脚本中心", "UI 库加载失败，功能不可用", 6)
 	warn("[G2R5x] WindUI 加载失败: " .. tostring(uiErr))
 	return
 end
@@ -247,8 +293,8 @@ end
 --------------------------------------------------------------------------------
 -- 脚本中心
 --------------------------------------------------------------------------------
-local TabRecent = SafeTab({ Title = "最近", Icon = "history" })
 local TabHub = SafeTab({ Title = "脚本中心", Icon = "layout-grid" })
+local TabRecent = SafeTab({ Title = "最近", Icon = "history" })
 for _, e in ipairs(SCRIPT_LIB) do
 	if e.cat == "脚本中心" then
 		TabHub:Button({
@@ -393,6 +439,170 @@ local function DoJump()
 	pcall(function()
 		local h = GetHum()
 		if h then applyJump[JumpMode](h, JumpVal) end
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- 无限跳跃 3 种方式
+--------------------------------------------------------------------------------
+local IJ_MODES = { "方式一 状态重置", "方式二 落地即跳", "方式三 速度注入" }
+local IJMode = 1
+local IJAuto = true
+local IJOn = false
+local IJVal = 50
+
+local applyIJ = {}
+applyIJ[1] = function(hum, v)
+	task.spawn(function()
+		while IJOn and IJMode == 1 do
+			pcall(function()
+				local h = GetHum()
+				local r = GetRoot()
+				if h and r then
+					local st = h:GetState()
+					if st ~= Enum.HumanoidStateType.Jumping and st ~= Enum.HumanoidStateType.Freefall then
+						if h.Jump == false and h.MoveDirection.Magnitude >= 0 then
+							h:ChangeState(Enum.HumanoidStateType.Jumping)
+						end
+					end
+				end
+			end)
+			RS.Heartbeat:Wait()
+		end
+	end)
+end
+applyIJ[2] = function(hum, v)
+	task.spawn(function()
+		local conn
+		conn = RS.Heartbeat:Connect(function()
+			if not (IJOn and IJMode == 2) then return end
+			pcall(function()
+				local h = GetHum()
+				if h and h.FloorMaterial ~= Enum.Material.Air then
+					h.Jump = true
+				end
+			end)
+		end)
+		while IJOn and IJMode == 2 do task.wait(0.5) end
+		pcall(function() if conn then conn:Disconnect() end end)
+	end)
+end
+applyIJ[3] = function(hum, v)
+	task.spawn(function()
+		local conn
+		conn = UIS.JumpRequest:Connect(function()
+			pcall(function()
+				local r = GetRoot()
+				if r then
+					r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, v, r.AssemblyLinearVelocity.Z)
+				end
+			end)
+		end)
+		while IJOn and IJMode == 3 do task.wait(0.5) end
+		pcall(function() if conn then conn:Disconnect() end end)
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- 穿墙 3 种方式
+--------------------------------------------------------------------------------
+local NC_MODES = { "方式一 关闭碰撞", "方式二 碰撞分组", "方式三 位移穿透" }
+local NCMode = 1
+local NCAuto = true
+local NCOn = false
+local NCVal = 3
+local NCSaved = {}
+local NCGroup = "G2R5xNoClip"
+
+local function CharParts()
+	local c = LP.Character
+	if not c then return {} end
+	local out = {}
+	for _, d in ipairs(c:GetDescendants()) do
+		if d:IsA("BasePart") then out[#out + 1] = d end
+	end
+	return out
+end
+
+local applyNC = {}
+applyNC[1] = function()
+	for _, p in ipairs(CharParts()) do
+		if NCSaved[p] == nil then NCSaved[p] = p.CanCollide end
+		pcall(function() p.CanCollide = false end)
+	end
+	task.spawn(function()
+		while NCOn and NCMode == 1 do
+			pcall(function()
+				for _, p in ipairs(CharParts()) do p.CanCollide = false end
+			end)
+			task.wait(0.35)
+		end
+	end)
+end
+applyNC[2] = function()
+	pcall(function()
+		local ps = game:GetService("PhysicsService")
+		pcall(function() ps:CreateCollisionGroup(NCGroup) end)
+		pcall(function() ps:CollisionGroupSetCollidable(NCGroup, "Default", false) end)
+		for _, p in ipairs(CharParts()) do
+			pcall(function() ps:SetPartCollisionGroup(p, NCGroup) end)
+		end
+	end)
+	task.spawn(function()
+		while NCOn and NCMode == 2 do
+			pcall(function()
+				local ps = game:GetService("PhysicsService")
+				for _, p in ipairs(CharParts()) do
+					ps:SetPartCollisionGroup(p, NCGroup)
+				end
+			end)
+			task.wait(0.5)
+		end
+	end)
+end
+applyNC[3] = function()
+	task.spawn(function()
+		while NCOn and NCMode == 3 do
+			pcall(function()
+				local h = GetHum()
+				local r = GetRoot()
+				if not (h and r) then return end
+				for _, p in ipairs(CharParts()) do
+					pcall(function() p.CanCollide = false end)
+				end
+				local mv = h.MoveDirection
+				if mv.Magnitude > 0.01 then
+					r.CFrame = r.CFrame + (mv.Unit * (NCVal / 60))
+				end
+			end)
+			RS.Heartbeat:Wait()
+		end
+	end)
+end
+
+local function StopNC()
+	NCOn = false
+	pcall(function()
+		for p, v in pairs(NCSaved) do p.CanCollide = v end
+	end)
+	NCSaved = {}
+	pcall(function()
+		local ps = game:GetService("PhysicsService")
+		for _, p in ipairs(CharParts()) do
+			pcall(function() ps:SetPartCollisionGroup(p, "Default") end)
+		end
+	end)
+end
+
+local function DoIJ()
+	pcall(function()
+		local h = GetHum()
+		if h then applyIJ[IJMode](h, IJVal) end
+	end)
+end
+local function DoNC()
+	pcall(function()
+		applyNC[NCMode]()
 	end)
 end
 
@@ -550,6 +760,126 @@ TabLocal:Toggle({
 	end,
 })
 
+SafeAdd(TabLocal, "Section", { Title = "无限跳跃" })
+TabLocal:Toggle({
+	Title = "启用无限跳跃",
+	Value = false,
+	Callback = function(state)
+		IJOn = state
+		if state then
+			DoIJ()
+			Notify("本地修改", "无限跳跃已开启", 3)
+		else
+			Notify("本地修改", "无限跳跃已关闭", 3)
+		end
+	end,
+})
+SafeAdd(TabLocal, "Slider", {
+	Title = "跳跃力度",
+	Desc = "仅方式三生效",
+	Value = { Min = 20, Max = 300, Default = 50 },
+	Step = 1,
+	Range = { 20, 300 },
+	CurrentValue = 50,
+	Callback = function(val)
+		if type(val) == "number" then
+			IJVal = val
+			if IJOn then DoIJ() end
+		end
+	end,
+})
+SafeAdd(TabLocal, "Dropdown", {
+	Title = "无限跳跃方式",
+	Desc = "跳不动就换一种",
+	Values = IJ_MODES,
+	Value = IJ_MODES[1],
+	Multi = false,
+	AllowNone = false,
+	Options = IJ_MODES,
+	CurrentOption = IJ_MODES[1],
+	Callback = function(op)
+		local pick = op
+		if type(op) == "table" then pick = op[1] or op.Value end
+		for i, v in ipairs(IJ_MODES) do
+			if v == pick then IJMode = i end
+		end
+		if IJOn then DoIJ() end
+	end,
+})
+TabLocal:Toggle({
+	Title = "无限跳跃方式自动切换",
+	Value = true,
+	Callback = function(state)
+		IJAuto = state
+	end,
+})
+
+SafeAdd(TabLocal, "Section", { Title = "穿墙" })
+TabLocal:Toggle({
+	Title = "启用穿墙",
+	Value = false,
+	Callback = function(state)
+		if state then
+			NCOn = true
+			DoNC()
+			Notify("本地修改", "穿墙已开启", 3)
+		else
+			StopNC()
+			Notify("本地修改", "穿墙已关闭", 3)
+		end
+	end,
+})
+SafeAdd(TabLocal, "Slider", {
+	Title = "穿透步长",
+	Desc = "仅方式三生效",
+	Value = { Min = 1, Max = 12, Default = 3 },
+	Step = 1,
+	Range = { 1, 12 },
+	CurrentValue = 3,
+	Callback = function(val)
+		if type(val) == "number" then NCVal = val end
+	end,
+})
+SafeAdd(TabLocal, "Dropdown", {
+	Title = "穿墙方式",
+	Desc = "穿不过就换一种",
+	Values = NC_MODES,
+	Value = NC_MODES[1],
+	Multi = false,
+	AllowNone = false,
+	Options = NC_MODES,
+	CurrentOption = NC_MODES[1],
+	Callback = function(op)
+		local pick = op
+		if type(op) == "table" then pick = op[1] or op.Value end
+		for i, v in ipairs(NC_MODES) do
+			if v == pick then NCMode = i end
+		end
+		if NCOn then DoNC() end
+	end,
+})
+TabLocal:Toggle({
+	Title = "穿墙方式自动切换",
+	Value = true,
+	Callback = function(state)
+		NCAuto = state
+	end,
+})
+
+--------------------------------------------------------------------------------
+-- 娱乐
+--------------------------------------------------------------------------------
+local TabFun = SafeTab({ Title = "娱乐", Icon = "gamepad-2" })
+for _, e in ipairs(FUN_LIB) do
+	SafeAdd(TabFun, "Button", {
+		Title = e.name,
+		Desc = "点击执行",
+		Callback = function()
+			RunScript(e)
+		end,
+	})
+end
+
 --------------------------------------------------------------------------------
 -- 关于
 --------------------------------------------------------------------------------
@@ -612,6 +942,20 @@ SafeAdd(TabAbout, "Paragraph", {
 -- 最近运行（最多 3 条）
 --------------------------------------------------------------------------------
 local RECENT = {}
+task.spawn(function()
+	local saved = FS.Load("recent")
+	if type(saved) == "table" then
+		for _, nm in ipairs(saved) do
+			for _, e in ipairs(SCRIPT_LIB) do
+				if e.name == nm then RECENT[#RECENT + 1] = e break end
+			end
+			for _, e in ipairs(FUN_LIB) do
+				if e.name == nm then RECENT[#RECENT + 1] = e break end
+			end
+			if #RECENT >= 3 then break end
+		end
+	end
+end)
 
 RefreshRecent = function()
 	local tab = TabRecent
@@ -665,6 +1009,9 @@ PushRecent = function(entry)
 	end
 	table.insert(RECENT, 1, entry)
 	while #RECENT > 3 do table.remove(RECENT, #RECENT) end
+	local names = {}
+	for _, e in ipairs(RECENT) do names[#names + 1] = e.name end
+	FS.Save("recent", names)
 	pcall(RefreshRecent)
 end
 
@@ -790,6 +1137,175 @@ task.spawn(function()
 	pcall(RefreshRecent)
 end)
 
+--------------------------------------------------------------------------------
+-- 设置
+--------------------------------------------------------------------------------
+local TabSet = SafeTab({ Title = "设置", Icon = "settings" })
+
+local CFG = {
+	autoRun = false,
+	autoName = "",
+	theme = "Dark",
+	scale = 1,
+	intro = true,
+	notifDur = 5,
+}
+local savedCfg = FS.Load("config")
+if type(savedCfg) == "table" then
+	for k, v in pairs(savedCfg) do
+		if CFG[k] ~= nil then CFG[k] = v end
+	end
+end
+local function SaveCfg()
+	FS.Save("config", {
+		autoRun = CFG.autoRun, autoName = CFG.autoName,
+		theme = CFG.theme, scale = CFG.scale,
+		intro = CFG.intro, notifDur = CFG.notifDur,
+	})
+end
+
+SafeAdd(TabSet, "Section", { Title = "主链接" })
+SafeAdd(TabSet, "Button", {
+	Title = "复制脚本主链接",
+	Desc = "点击复制到剪贴板",
+	Icon = "copy",
+	Callback = function()
+		if CopyText(MAIN_LINK) then
+			Notify("复制成功", "主脚本链接已复制", 4)
+		else
+			Notify("复制失败", "剪贴板不可用", 5)
+		end
+	end,
+})
+
+SafeAdd(TabSet, "Section", { Title = "自启动" })
+SafeAdd(TabSet, "Paragraph", {
+	Title = "⚠️ 默认关闭",
+	Desc = "默认在关闭状态的原因是防止有些服务器检测并封禁，这是为了安全着想，应该不是他只是测试版不稳定。",
+})
+SafeAdd(TabSet, "Toggle", {
+	Title = "进入服务器时自启动",
+	Value = CFG.autoRun,
+	Callback = function(state)
+		CFG.autoRun = state
+		SaveCfg()
+	end,
+})
+local AUTO_NAMES = { "(未选择)" }
+for _, e in ipairs(SCRIPT_LIB) do AUTO_NAMES[#AUTO_NAMES + 1] = e.name end
+for _, e in ipairs(FUN_LIB) do AUTO_NAMES[#AUTO_NAMES + 1] = e.name end
+SafeAdd(TabSet, "Dropdown", {
+	Title = "自启动运行的脚本",
+	Desc = "需先开启上面的开关",
+	Values = AUTO_NAMES,
+	Value = (CFG.autoName ~= "" and CFG.autoName) or AUTO_NAMES[1],
+	Multi = false,
+	AllowNone = false,
+	Options = AUTO_NAMES,
+	CurrentOption = (CFG.autoName ~= "" and CFG.autoName) or AUTO_NAMES[1],
+	Callback = function(op)
+		local pick = op
+		if type(op) == "table" then pick = op[1] or op.Value end
+		CFG.autoName = (pick == AUTO_NAMES[1]) and "" or pick
+		SaveCfg()
+	end,
+})
+
+SafeAdd(TabSet, "Section", { Title = "脚本配置" })
+SafeAdd(TabSet, "Dropdown", {
+	Title = "界面主题",
+	Values = { "Dark", "Rose", "Sky", "Violet", "Amber" },
+	Value = CFG.theme,
+	Multi = false,
+	AllowNone = false,
+	Options = { "Dark", "Rose", "Sky", "Violet", "Amber" },
+	CurrentOption = CFG.theme,
+	Callback = function(op)
+		local pick = op
+		if type(op) == "table" then pick = op[1] or op.Value end
+		CFG.theme = tostring(pick or "Dark")
+		pcall(function() WindUI:SetTheme(CFG.theme) end)
+		SaveCfg()
+	end,
+})
+SafeAdd(TabSet, "Slider", {
+	Title = "界面大小",
+	Desc = "缩放 UI",
+	Value = { Min = 60, Max = 150, Default = math.floor(CFG.scale * 100) },
+	Step = 1,
+	Range = { 60, 150 },
+	CurrentValue = math.floor(CFG.scale * 100),
+	Callback = function(val)
+		if type(val) == "number" then
+			CFG.scale = val / 100
+			pcall(function()
+				if WindUI and WindUI.UIScale then WindUI.UIScale.Scale = CFG.scale end
+			end)
+			SaveCfg()
+		end
+	end,
+})
+SafeAdd(TabSet, "Slider", {
+	Title = "通知停留时间",
+	Desc = "单位: 秒",
+	Value = { Min = 2, Max = 12, Default = CFG.notifDur },
+	Step = 1,
+	Range = { 2, 12 },
+	CurrentValue = CFG.notifDur,
+	Callback = function(val)
+		if type(val) == "number" then
+			CFG.notifDur = val
+			SaveCfg()
+		end
+	end,
+})
+SafeAdd(TabSet, "Toggle", {
+	Title = "开场动画",
+	Value = CFG.intro,
+	Callback = function(state)
+		CFG.intro = state
+		SaveCfg()
+	end,
+})
+SafeAdd(TabSet, "Button", {
+	Title = "清空最近记录",
+	Desc = "删除本地保存的最近运行",
+	Callback = function()
+		RECENT = {}
+		FS.Save("recent", {})
+		pcall(RefreshRecent)
+		Notify("设置", "最近记录已清空", 4)
+	end,
+})
+SafeAdd(TabSet, "Button", {
+	Title = "恢复默认设置",
+	Desc = "重置全部配置",
+	Callback = function()
+		CFG.autoRun = false
+		CFG.autoName = ""
+		CFG.theme = "Dark"
+		CFG.scale = 1
+		CFG.intro = true
+		CFG.notifDur = 5
+		SaveCfg()
+		Notify("设置", "已恢复默认", 4)
+	end,
+})
+
+task.spawn(function()
+	if not CFG.autoRun then return end
+	if CFG.autoName == "" then return end
+	task.wait(2)
+	for _, e in ipairs(SCRIPT_LIB) do
+		if e.name == CFG.autoName then RunScript(e) return end
+	end
+	for _, e in ipairs(FUN_LIB) do
+		if e.name == CFG.autoName then RunScript(e) return end
+	end
+end)
+
+_G.__G2R5X_CFG = CFG
+
 pcall(function()
 	getgenv().G2R5X = {
 		Lib = SCRIPT_LIB,
@@ -812,4 +1328,4 @@ pcall(function()
 	}
 end)
 
-Notify("G2R5x 脚本中心", "加载完成  作者Q: 2122119096", 5)
+Notify("G2R5x 脚本中心", "加载完成", CFG.notifDur or 5)
