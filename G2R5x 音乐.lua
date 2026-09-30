@@ -1,9 +1,8 @@
 local Players=game:GetService("Players")
 local TweenService=game:GetService("TweenService")
 local UIS=game:GetService("UserInputService")
-local TS=game:GetService("TextService")
-local HS=game:GetService("HttpService")
 local RS=game:GetService("RunService")
+local HS=game:GetService("HttpService")
 local MPS=game:GetService("MarketplaceService")
 local SoundService=game:GetService("SoundService")
 local LP=Players.LocalPlayer
@@ -23,7 +22,6 @@ local vw,vh=Cam.ViewportSize.X,Cam.ViewportSize.Y
 local W=math.min(430,vw-16)
 local H=math.min(610,vh-50)
 local FONT=Enum.Font.Gotham
-local FS=15
 local THEMES={
 {name="暗紫",bg=Color3.fromRGB(16,16,24),top=Color3.fromRGB(28,26,42),card=Color3.fromRGB(38,36,54),acc=Color3.fromRGB(124,92,240),txt=Color3.fromRGB(236,236,248),sub=Color3.fromRGB(142,136,172),bar=Color3.fromRGB(55,52,74)},
 {name="纯黑",bg=Color3.fromRGB(8,8,10),top=Color3.fromRGB(18,18,20),card=Color3.fromRGB(26,26,30),acc=Color3.fromRGB(255,255,255),txt=Color3.fromRGB(245,245,245),sub=Color3.fromRGB(130,130,138),bar=Color3.fromRGB(45,45,50)},
@@ -34,25 +32,33 @@ local TI=1
 local function C(k) return THEMES[TI][k] end
 local themed={}
 local function reg(o,p,k) table.insert(themed,{o=o,p=p,k=k}) o[p]=C(k) return o end
-local function applyTheme()
-	for _,t in ipairs(themed) do t.o[t.p]=C(t.k) end
-end
+local function applyTheme() for _,t in ipairs(themed) do t.o[t.p]=C(t.k) end end
 local intro=Instance.new("Frame")
+intro.Name="IntroBlack"
 intro.Size=UDim2.new(1,0,1,0)
 intro.BackgroundColor3=Color3.fromRGB(6,6,12)
 intro.BorderSizePixel=0
 intro.ZIndex=300
 intro.Parent=gui
+task.delay(6,function()
+	local g=PG:FindFirstChild("G2R5xMusicHub")
+	if not g then return end
+	local iv=g:FindFirstChild("IntroBlack")
+	if iv then iv:Destroy() end
+	local m=g:FindFirstChild("Main")
+	if m then m.Visible=true end
+end)
 local ig=Instance.new("TextLabel")
 ig.Size=UDim2.new(1,0,0,150) ig.Position=UDim2.new(0.5,0,0.5,-34) ig.AnchorPoint=Vector2.new(0.5,0.5)
 ig.BackgroundTransparency=1 ig.Font=Enum.Font.GothamBold ig.Text="" ig.TextColor3=Color3.fromRGB(150,115,255) ig.TextTransparency=0.4 ig.TextScaled=true ig.ZIndex=301 ig.Parent=intro
 local it=Instance.new("TextLabel")
 it.Size=UDim2.new(1,0,0,150) it.Position=UDim2.new(0.5,0,0.5,-34) it.AnchorPoint=Vector2.new(0.5,0.5)
-it.BackgroundTransparency=1 it.Font=Enum.Font.GothamBold ig.Text="" it.Text="" it.TextColor3=Color3.fromRGB(238,235,255) it.TextScaled=true it.ZIndex=302 it.Parent=intro
+it.BackgroundTransparency=1 it.Font=Enum.Font.GothamBold it.Text="" it.TextColor3=Color3.fromRGB(238,235,255) it.TextScaled=true it.ZIndex=302 it.Parent=intro
 local isub=Instance.new("TextLabel")
 isub.Size=UDim2.new(1,0,0,30) isub.Position=UDim2.new(0.5,0,0.5,54) isub.AnchorPoint=Vector2.new(0.5,0.5)
 isub.BackgroundTransparency=1 isub.Font=FONT isub.Text="LOADING" isub.TextColor3=Color3.fromRGB(125,115,175) isub.TextSize=14 isub.TextTransparency=1 isub.ZIndex=302 isub.Parent=intro
 local main=Instance.new("Frame")
+main.Name="Main"
 main.Size=UDim2.new(0,W,0,H) main.Position=UDim2.new(0,(vw-W)/2,0,(vh-H)/2)
 main.BackgroundColor3=C("bg") main.BorderSizePixel=0 main.Visible=false main.ZIndex=10 main.Parent=gui
 local mcn=Instance.new("UICorner") mcn.CornerRadius=UDim.new(0,16) mcn.Parent=main
@@ -75,10 +81,10 @@ local function mkBtn(txt,xo,col,sz)
 	local c=Instance.new("UICorner") c.CornerRadius=UDim.new(0,9) c.Parent=b
 	return b
 end
-local bSearch=mkBtn("🔍",-152,Color3.fromRGB(70,66,110))
-local bMenu=mkBtn("⋮",-116,Color3.fromRGB(70,66,110))
+local bSearch=mkBtn("S",-152,Color3.fromRGB(70,66,110))
+local bMenu=mkBtn("*",-116,Color3.fromRGB(70,66,110))
 local bMin=mkBtn("-",-80,Color3.fromRGB(80,72,132))
-local bX=mkBtn("✕",-42,Color3.fromRGB(150,50,60))
+local bX=mkBtn("X",-42,Color3.fromRGB(150,50,60))
 local tabs=Instance.new("Frame")
 tabs.Size=UDim2.new(1,0,0,40) tabs.Position=UDim2.new(0,0,0,46) tabs.BackgroundTransparency=1 tabs.ZIndex=11 tabs.Parent=main
 local function mkTab(t,i)
@@ -108,7 +114,6 @@ local DB={songs={},pls={},hist={},queue={},fav={}}
 local cur=nil
 local curIdx=0
 local playing=false
-local queuePos=0
 local LOOPMODE={"列表循环","单曲循环","顺序播放"}
 local loopI=1
 local shuffle=false
@@ -119,7 +124,7 @@ local timerI=1
 local timerEnd=0
 local vol=0.7
 local muted=false
-local SET={autoplay=true,fade=true,spec=true,lyric=true,bgplay=true,quality="标准",theme=1}
+local SET={fade=true,spec=true,lyric=true,quality="标准",cover="静止",theme=1}
 local sound=Instance.new("Sound")
 sound.Parent=SoundService
 sound.Volume=vol
@@ -155,7 +160,7 @@ local function buildModal()
 	modalBox=Instance.new("Frame")
 	modalBox.Size=UDim2.new(1,0,1,0) modalBox.BackgroundColor3=Color3.fromRGB(0,0,0) modalBox.BackgroundTransparency=0.5 modalBox.BorderSizePixel=0 modalBox.Visible=false modalBox.ZIndex=500 modalBox.Parent=gui
 	local card=Instance.new("Frame")
-	card.Size=UDim2.new(0,W-50,0,190) card.Position=UDim2.new(0.5,0,0.5,0) card.AnchorPoint=Vector2.new(0.5,0.5)
+	card.Size=UDim2.new(0,W-50,0,210) card.Position=UDim2.new(0.5,0,0.5,0) card.AnchorPoint=Vector2.new(0.5,0.5)
 	card.BackgroundColor3=C("bg") card.BorderSizePixel=0 card.ZIndex=501 card.Parent=modalBox
 	local cc=Instance.new("UICorner") cc.CornerRadius=UDim.new(0,14) cc.Parent=card
 	local cs=Instance.new("UIStroke") cs.Color=C("acc") cs.Thickness=1.2 cs.Transparency=0.4 cs.Parent=card
@@ -165,7 +170,7 @@ local function buildModal()
 	modalTitle.Font=Enum.Font.GothamBold modalTitle.TextSize=15 modalTitle.TextXAlignment=Enum.TextXAlignment.Left modalTitle.TextColor3=C("txt") modalTitle.ZIndex=502 modalTitle.Parent=card
 	reg(modalTitle,"TextColor3","txt")
 	modalInput=Instance.new("TextBox")
-	modalInput.Size=UDim2.new(1,-30,0,72) modalInput.Position=UDim2.new(0,15,0,50) modalInput.BackgroundColor3=C("card")
+	modalInput.Size=UDim2.new(1,-30,0,92) modalInput.Position=UDim2.new(0,15,0,50) modalInput.BackgroundColor3=C("card")
 	modalInput.BorderSizePixel=0 modalInput.ClearTextOnFocus=false modalInput.Font=FONT modalInput.TextSize=14 modalInput.MultiLine=true
 	modalInput.TextColor3=C("txt") modalInput.PlaceholderColor3=C("sub") modalInput.TextXAlignment=Enum.TextXAlignment.Left modalInput.TextYAlignment=Enum.TextYAlignment.Top modalInput.ZIndex=502 modalInput.Parent=card
 	local ic=Instance.new("UICorner") ic.CornerRadius=UDim.new(0,9) ic.Parent=modalInput
@@ -192,7 +197,6 @@ end
 buildModal()
 local function Modal(t,ph,dv,cb)
 	modalTitle.Text=t modalInput.PlaceholderText=ph or "" modalInput.Text=dv or "" modalCb=cb modalBox.Visible=true
-	modalInput:CaptureFocus()
 end
 local function Confirm(t,cb)
 	Modal(t,"","",function(_,ok) if ok then cb() end end)
@@ -226,7 +230,7 @@ local function Menu(x,y,items)
 	end
 	menuBox=f
 	task.spawn(function()
-		task.wait(0.1)
+		task.wait(0.15)
 		local conn
 		conn=UIS.InputBegan:Connect(function(i2)
 			if i2.UserInputType==Enum.UserInputType.MouseButton1 or i2.UserInputType==Enum.UserInputType.Touch then
@@ -269,15 +273,19 @@ local function mkSlider(parent,pos,sz,init,cb)
 		fl.Size=UDim2.new(v,0,1,0) kn.Position=UDim2.new(v,0,0.5,0)
 	end
 end
-local coverBig=Instance.new("ImageLabel")
+local coverBig=Instance.new("Frame")
 coverBig.Size=UDim2.new(0,150,0,150) coverBig.Position=UDim2.new(0.5,0,0,18) coverBig.AnchorPoint=Vector2.new(0.5,0)
-coverBig.BackgroundColor3=C("card") coverBig.BorderSizePixel=0 coverBig.Image="" coverBig.ScaleType=Enum.ScaleType.Crop coverBig.ZIndex=13 coverBig.Parent=pNow
+coverBig.BackgroundColor3=C("card") coverBig.BorderSizePixel=0 coverBig.ZIndex=13 coverBig.Parent=pNow
 local cbc=Instance.new("UICorner") cbc.CornerRadius=UDim.new(0,18) cbc.Parent=coverBig
 local cbs=Instance.new("UIStroke") cbs.Color=C("acc") cbs.Thickness=2 cbs.Transparency=0.4 cbs.Parent=coverBig
 reg(coverBig,"BackgroundColor3","card") reg(cbs,"Color","acc")
-local coverMask=Instance.new("ImageLabel")
-coverMask.Size=UDim2.new(0,54,0,54) coverMask.Position=UDim2.new(0.5,0,0,66) coverMask.AnchorPoint=Vector2.new(0.5,0.5)
-coverMask.BackgroundColor3=Color3.fromRGB(12,12,18) coverMask.BackgroundTransparency=0.35 coverMask.BorderSizePixel=0 coverMask.Image="rbxassetid://3926305904" coverMask.ImageRectSize=Vector2.new(0,0) coverMask.ZIndex=14 coverMask.Parent=coverBig
+local coverImg=Instance.new("ImageLabel")
+coverImg.Size=UDim2.new(1,0,1,0) coverImg.BackgroundTransparency=1 coverImg.BorderSizePixel=0 coverImg.Image="" coverImg.ScaleType=Enum.ScaleType.Crop coverImg.ZIndex=13 coverImg.Parent=coverBig
+local ci=Instance.new("UICorner") ci.CornerRadius=UDim.new(0,18) ci.Parent=coverImg
+local coverMask=Instance.new("TextButton")
+coverMask.Size=UDim2.new(0,54,0,54) coverMask.Position=UDim2.new(0.5,0,0.5,0) coverMask.AnchorPoint=Vector2.new(0.5,0.5)
+coverMask.BackgroundColor3=Color3.fromRGB(12,12,18) coverMask.BackgroundTransparency=0.35 coverMask.BorderSizePixel=0
+coverMask.Text="▶" coverMask.Font=Enum.Font.GothamBold coverMask.TextSize=22 coverMask.TextColor3=Color3.fromRGB(255,255,255) coverMask.ZIndex=14 coverMask.Parent=coverBig
 local cmc=Instance.new("UICorner") cmc.CornerRadius=UDim.new(1,0) cmc.Parent=coverMask
 local nmLbl=Instance.new("TextLabel")
 nmLbl.Size=UDim2.new(1,-40,0,24) nmLbl.Position=UDim2.new(0.5,0,0,182) nmLbl.AnchorPoint=Vector2.new(0.5,0)
@@ -317,9 +325,9 @@ local function mkRound(txt,x,y,sz,col,par)
 	local c=Instance.new("UICorner") c.CornerRadius=UDim.new(1,0) c.Parent=b
 	return b
 end
-local bPrev=mkRound("◀◀",-72,312,40,C("card"),pNow)
-local bPlay=mkRound("▶",0,308,52,C("acc"),pNow)
-local bNext=mkRound("▶▶",72,312,40,C("card"),pNow)
+local bPrev=mkRound("|<<",-72,312,40,C("card"),pNow)
+local bPlay=mkRound(">",0,308,52,C("acc"),pNow)
+local bNext=mkRound(">>|",72,312,40,C("card"),pNow)
 reg(bPrev,"BackgroundColor3","card") reg(bNext,"BackgroundColor3","card") reg(bPlay,"BackgroundColor3","acc")
 local function mkChip(txt,x,y,w,par)
 	local b=Instance.new("TextButton")
@@ -335,20 +343,21 @@ local chipLoop=mkChip("列表循环",pad,372,cw,pNow)
 local chipShuf=mkChip("随机 关",pad+cw+4,372,cw,pNow)
 local chipSpeed=mkChip("1.0x",pad+(cw+4)*2,372,cw,pNow)
 local chipTimer=mkChip("定时 关",pad+(cw+4)*3,372,cw,pNow)
-local chipFav=mkChip("♥ 收藏",pad,408,cw,pNow)
+local chipFav=mkChip("收藏",pad,408,cw,pNow)
 local chipLyric=mkChip("歌词",pad+cw+4,408,cw,pNow)
 local chipQueue=mkChip("队列",pad+(cw+4)*2,408,cw,pNow)
 local chipInfo=mkChip("详情",pad+(cw+4)*3,408,cw,pNow)
 local vIcon=Instance.new("TextLabel")
 vIcon.Size=UDim2.new(0,26,0,26) vIcon.Position=UDim2.new(0,pad,0,448) vIcon.BackgroundTransparency=1
-vIcon.Font=Enum.Font.GothamBold vIcon.TextSize=16 vIcon.Text="🔊" vIcon.TextColor3=C("sub") vIcon.ZIndex=14 vIcon.Parent=pNow
+vIcon.Font=Enum.Font.GothamBold vIcon.TextSize=15 vIcon.Text="V" vIcon.TextColor3=C("sub") vIcon.ZIndex=14 vIcon.Parent=pNow
 reg(vIcon,"TextColor3","sub")
 local vIconBtn=Instance.new("TextButton")
 vIconBtn.Size=UDim2.new(0,26,0,26) vIconBtn.Position=UDim2.new(0,pad,0,448) vIconBtn.BackgroundTransparency=1 vIconBtn.Text="" vIconBtn.ZIndex=15 vIconBtn.Parent=pNow
 local volBar,setVol=mkSlider(pNow,UDim2.new(0,pad+34,0,457),UDim2.new(0,W-pad*2-70,0,6),vol,function(r)
 	vol=r muted=false
-	vIcon.Text=r==0 and "🔇" or "🔊"
+	vIcon.Text=r==0 and "M" or "V"
 	sound.Volume=r
+	vTxt.Text=math.floor(r*100).."%"
 end)
 local vTxt=Instance.new("TextLabel")
 vTxt.Size=UDim2.new(0,36,0,26) vTxt.Position=UDim2.new(1,-pad,0,448) vTxt.AnchorPoint=Vector2.new(1,0) vTxt.BackgroundTransparency=1
@@ -360,7 +369,7 @@ local irc=Instance.new("UICorner") irc.CornerRadius=UDim.new(0,10) irc.Parent=id
 reg(idRow,"BackgroundColor3","card")
 local idInput=Instance.new("TextBox")
 idInput.Size=UDim2.new(1,-90,1,0) idInput.Position=UDim2.new(0,12,0,0) idInput.BackgroundTransparency=1
-idInput.ClearTextOnFocus=false idInput.Font=FONT idInput.TextSize=13 idInput.PlaceholderText="输入音乐 ID 或 名稱,ID"
+idInput.ClearTextOnFocus=false idInput.Font=FONT idInput.TextSize=13 idInput.PlaceholderText="音乐ID 或 名称,ID"
 idInput.PlaceholderColor3=C("sub") idInput.TextColor3=C("txt") idInput.TextXAlignment=Enum.TextXAlignment.Left idInput.ZIndex=15 idInput.Parent=idRow
 reg(idInput,"TextColor3","txt")
 local idAdd=Instance.new("TextButton")
@@ -388,12 +397,12 @@ local src=Instance.new("UICorner") src.CornerRadius=UDim.new(0,9) src.Parent=sea
 reg(searchRow,"BackgroundColor3","card")
 local searchBox=Instance.new("TextBox")
 searchBox.Size=UDim2.new(1,-40,1,0) searchBox.Position=UDim2.new(0,12,0,0) searchBox.BackgroundTransparency=1
-searchBox.ClearTextOnFocus=false searchBox.Font=FONT searchBox.TextSize=13 searchBox.PlaceholderText="搜索歌名 / 作者 / ID"
+searchBox.ClearTextOnFocus=false searchBox.Font=FONT searchBox.TextSize=13 searchBox.PlaceholderText="搜索歌名/作者/ID"
 searchBox.PlaceholderColor3=C("sub") searchBox.TextColor3=C("txt") searchBox.TextXAlignment=Enum.TextXAlignment.Left searchBox.ZIndex=14 searchBox.Parent=searchRow
 reg(searchBox,"TextColor3","txt")
 local sClear=Instance.new("TextButton")
 sClear.Size=UDim2.new(0,28,0,28) sClear.Position=UDim2.new(1,-4,0.5,0) sClear.AnchorPoint=Vector2.new(1,0.5)
-sClear.BackgroundTransparency=1 sClear.Text="✕" sClear.Font=Enum.Font.GothamBold sClear.TextSize=13 sClear.TextColor3=C("sub") sClear.ZIndex=14 sClear.Parent=searchRow
+sClear.BackgroundTransparency=1 sClear.Text="X" sClear.Font=Enum.Font.GothamBold sClear.TextSize=13 sClear.TextColor3=C("sub") sClear.ZIndex=14 sClear.Parent=searchRow
 reg(sClear,"TextColor3","sub")
 local libBody=Instance.new("Frame")
 libBody.Size=UDim2.new(1,0,1,-84) libBody.Position=UDim2.new(0,0,0,80) libBody.BackgroundTransparency=1 libBody.ZIndex=13 libBody.Parent=pLib
@@ -413,7 +422,7 @@ local backRow=Instance.new("Frame")
 backRow.Size=UDim2.new(1,-16,0,32) backRow.Position=UDim2.new(0,8,0,0) backRow.BackgroundTransparency=1 backRow.Visible=false backRow.ZIndex=15 backRow.Parent=libBody
 local bBack=Instance.new("TextButton")
 bBack.Size=UDim2.new(0,80,0,28) bBack.Position=UDim2.new(0,0,0.5,0) bBack.AnchorPoint=Vector2.new(0,0.5)
-bBack.BackgroundColor3=C("card") bBack.BackgroundTransparency=0.3 bBack.BorderSizePixel=0 bBack.Text="◀ 返回" bBack.Font=Enum.Font.GothamBold bBack.TextSize=12 bBack.TextColor3=C("txt") bBack.ZIndex=16 bBack.Parent=backRow
+bBack.BackgroundColor3=C("card") bBack.BackgroundTransparency=0.3 bBack.BorderSizePixel=0 bBack.Text="< 返回" bBack.Font=Enum.Font.GothamBold bBack.TextSize=12 bBack.TextColor3=C("txt") bBack.ZIndex=16 bBack.Parent=backRow
 local bbc=Instance.new("UICorner") bbc.CornerRadius=UDim.new(0,8) bbc.Parent=bBack
 reg(bBack,"BackgroundColor3","card") reg(bBack,"TextColor3","txt")
 local plName=Instance.new("TextLabel")
@@ -457,10 +466,8 @@ local function mkSwitch(text,init,cb)
 		st.v=not st.v
 		b.BackgroundColor3=st.v and C("acc") or C("bar")
 		k.Position=st.v and UDim2.new(1,-21,0.5,0) or UDim2.new(0,3,0.5,0)
-		TweenService:Create(k,TweenInfo.new(0.15),{Position=k.Position}):Play()
 		cb(st.v)
 	end)
-	reg(b,"BackgroundColor3",init and "acc" or "bar")
 	return f,b,st
 end
 local function mkChoice(text,opts,init,cb)
@@ -480,7 +487,7 @@ local function mkChoice(text,opts,init,cb)
 		b.Text=opts[idx]
 		cb(idx,opts[idx])
 	end)
-	return f,b,function() return idx end
+	return f,b
 end
 local function mkActRow(text,btn,col,cb)
 	local f=mkSetRow(44)
@@ -505,21 +512,22 @@ local lyTitle=Instance.new("TextLabel")
 lyTitle.Size=UDim2.new(1,-90,1,0) lyTitle.Position=UDim2.new(0,16,0,0) lyTitle.BackgroundTransparency=1
 lyTitle.Font=Enum.Font.GothamBold lyTitle.TextSize=15 lyTitle.Text="歌词" lyTitle.TextColor3=C("txt") lyTitle.TextXAlignment=Enum.TextXAlignment.Left lyTitle.ZIndex=102 lyTitle.Parent=lyTop
 reg(lyTitle,"TextColor3","txt")
-local lyClose=Instance.new("TextButton")
-lyClose.Size=UDim2.new(0,60,0,28) lyClose.Position=UDim2.new(1,-14,0.5,0) lyClose.AnchorPoint=Vector2.new(1,0.5)
-lyClose.BackgroundColor3=C("card") lyClose.BorderSizePixel=0 lyClose.Text="关闭" lyClose.Font=Enum.Font.GothamBold lyClose.TextSize=12 lyClose.TextColor3=C("txt") lyClose.ZIndex=102 lyClose.Parent=lyTop
-local lyc=Instance.new("UICorner") lyc.CornerRadius=UDim.new(0,8) lyc.Parent=lyClose
-reg(lyClose,"BackgroundColor3","card") reg(lyClose,"TextColor3","txt")
 local lyEd=Instance.new("TextButton")
-lyEd.Size=UDim2.new(0,60,0,28) lyEd.Position=UDim2.new(1,-80,0.5,0) lyEd.AnchorPoint=Vector2.new(1,0.5)
+lyEd.Size=UDim2.new(0,56,0,28) lyEd.Position=UDim2.new(1,-78,0.5,0) lyEd.AnchorPoint=Vector2.new(1,0.5)
 lyEd.BackgroundColor3=C("card") lyEd.BorderSizePixel=0 lyEd.Text="粘贴" lyEd.Font=Enum.Font.GothamBold lyEd.TextSize=12 lyEd.TextColor3=C("txt") lyEd.ZIndex=102 lyEd.Parent=lyTop
 local lye=Instance.new("UICorner") lye.CornerRadius=UDim.new(0,8) lye.Parent=lyEd
 reg(lyEd,"BackgroundColor3","card") reg(lyEd,"TextColor3","txt")
+local lyClose=Instance.new("TextButton")
+lyClose.Size=UDim2.new(0,56,0,28) lyClose.Position=UDim2.new(1,-14,0.5,0) lyClose.AnchorPoint=Vector2.new(1,0.5)
+lyClose.BackgroundColor3=C("card") lyClose.BorderSizePixel=0 lyClose.Text="关闭" lyClose.Font=Enum.Font.GothamBold lyClose.TextSize=12 lyClose.TextColor3=C("txt") lyClose.ZIndex=102 lyClose.Parent=lyTop
+local lyc=Instance.new("UICorner") lyc.CornerRadius=UDim.new(0,8) lyc.Parent=lyClose
+reg(lyClose,"BackgroundColor3","card") reg(lyClose,"TextColor3","txt")
 local lyScroll=Instance.new("ScrollingFrame")
 lyScroll.Size=UDim2.new(1,-20,1,-70) lyScroll.Position=UDim2.new(0,10,0,56) lyScroll.BackgroundTransparency=1 lyScroll.BorderSizePixel=0
 lyScroll.ScrollBarThickness=3 lyScroll.AutomaticCanvasSize=Enum.AutomaticSize.Y lyScroll.CanvasSize=UDim2.new(0,0,0,0) lyScroll.ZIndex=101 lyScroll.Parent=lyricPage
 local lyl=Instance.new("UIListLayout") lyl.Padding=UDim.new(0,14) lyl.SortOrder=Enum.SortOrder.LayoutOrder lyl.Parent=lyScroll
 local lyp=Instance.new("UIPadding") lyp.PaddingTop=UDim.new(0,120) lyp.PaddingBottom=UDim.new(0,120) lyp.Parent=lyScroll
+local lyricLines=nil
 local queuePage=Instance.new("Frame")
 queuePage.Size=UDim2.new(1,0,1,0) queuePage.BackgroundColor3=C("bg") queuePage.BorderSizePixel=0 queuePage.Visible=false queuePage.ZIndex=100 queuePage.Parent=main
 reg(queuePage,"BackgroundColor3","bg")
@@ -530,15 +538,15 @@ local qTitle=Instance.new("TextLabel")
 qTitle.Size=UDim2.new(1,-160,1,0) qTitle.Position=UDim2.new(0,16,0,0) qTitle.BackgroundTransparency=1
 qTitle.Font=Enum.Font.GothamBold qTitle.TextSize=15 qTitle.Text="播放队列" qTitle.TextColor3=C("txt") qTitle.TextXAlignment=Enum.TextXAlignment.Left qTitle.ZIndex=102 qTitle.Parent=qTop
 reg(qTitle,"TextColor3","txt")
+local qClear=Instance.new("TextButton")
+qClear.Size=UDim2.new(0,86,0,28) qClear.Position=UDim2.new(1,-64,0.5,0) qClear.AnchorPoint=Vector2.new(1,0.5)
+qClear.BackgroundColor3=Color3.fromRGB(150,50,60) qClear.BorderSizePixel=0 qClear.Text="清空队列" qClear.Font=Enum.Font.GothamBold qClear.TextSize=12 qClear.TextColor3=Color3.fromRGB(255,255,255) qClear.ZIndex=102 qClear.Parent=qTop
+local qcc=Instance.new("UICorner") qcc.CornerRadius=UDim.new(0,8) qcc.Parent=qClear
 local qClose=Instance.new("TextButton")
-qClose.Size=UDim2.new(0,50,0,28) qClose.Position=UDim2.new(1,-14,0.5,0) qClose.AnchorPoint=Vector2.new(1,0.5)
+qClose.Size=UDim2.new(0,50,0,28) qClose.Position=UDim2.new(1,-8,0.5,0) qClose.AnchorPoint=Vector2.new(1,0.5)
 qClose.BackgroundColor3=C("card") qClose.BorderSizePixel=0 qClose.Text="关闭" qClose.Font=Enum.Font.GothamBold qClose.TextSize=12 qClose.TextColor3=C("txt") qClose.ZIndex=102 qClose.Parent=qTop
 local qc=Instance.new("UICorner") qc.CornerRadius=UDim.new(0,8) qc.Parent=qClose
 reg(qClose,"BackgroundColor3","card") reg(qClose,"TextColor3","txt")
-local qClear=Instance.new("TextButton")
-qClear.Size=UDim2.new(0,90,0,28) qClear.Position=UDim2.new(1,-70,0.5,0) qClear.AnchorPoint=Vector2.new(1,0.5)
-qClear.BackgroundColor3=Color3.fromRGB(150,50,60) qClear.BorderSizePixel=0 qClear.Text="清空队列" qClear.Font=Enum.Font.GothamBold qClear.TextSize=12 qClear.TextColor3=Color3.fromRGB(255,255,255) qClear.ZIndex=102 qClear.Parent=qTop
-local qcc=Instance.new("UICorner") qcc.CornerRadius=UDim.new(0,8) qcc.Parent=qClear
 local qScroll=Instance.new("ScrollingFrame")
 qScroll.Size=UDim2.new(1,0,1,-46) qScroll.Position=UDim2.new(0,0,0,46) qScroll.BackgroundTransparency=1 qScroll.BorderSizePixel=0
 qScroll.ScrollBarThickness=3 qScroll.AutomaticCanvasSize=Enum.AutomaticSize.Y qScroll.CanvasSize=UDim2.new(0,0,0,0) qScroll.ZIndex=101 qScroll.Parent=queuePage
@@ -600,7 +608,7 @@ local function fetchInfo(s)
 		local ok,d=pcall(function() return MPS:GetProductInfo(tonumber(s.id),Enum.InfoType.Asset) end)
 		if ok and d then
 			if d.Name and d.Name~="" then s.name=d.Name end
-			if d.Creator and d.Creator.Name then s.artist=d.Creator.Name end
+			if d.Creator and d.Creator and d.Creator.Name then s.artist=d.Creator.Name end
 			refreshAll()
 			if cur==s then nmLbl.Text=s.name arLbl.Text=s.artist end
 		end
@@ -616,18 +624,18 @@ local function refreshFav()
 	for _,s in ipairs(DB.songs) do if s.liked then table.insert(DB.fav,s.id) end end
 end
 local function setPlayIcon()
-	bPlay.Text=playing and "❚❚" or "▶"
+	bPlay.Text=playing and "||" or ">"
+	coverMask.Text=playing and "||" or ">"
 end
 local function updateNow()
 	if not cur then
 		nmLbl.Text="未在播放" arLbl.Text="从下方添加音乐 ID" tAll.Text="00:00" tCur.Text="00:00"
-		coverBig.Image="" return
+		coverImg.Image="" setPlayIcon() return
 	end
 	nmLbl.Text=cur.name
-	arLbl.Text=cur.artist.." · "..cur.album
-	coverBig.Image=cur.cover~="" and "rbxassetid://"..cur.cover or ""
-	chipFav.Text=cur.liked and "♥ 已收藏" or "♥ 收藏"
-	chipFav.TextColor3=cur.liked and Color3.fromRGB(255,110,140) or C("txt")
+	arLbl.Text=cur.artist
+	coverImg.Image=cur.cover~="" and "rbxassetid://"..cur.cover or ""
+	chipFav.Text=cur.liked and "已收藏" or "收藏"
 	setPlayIcon()
 end
 local function doPlay(s)
@@ -640,58 +648,34 @@ local function doPlay(s)
 	sound.PlaybackSpeed=SPEEDS[speedI]
 	playing=true
 	setPlayIcon()
+	sound:Play()
 	task.spawn(function()
 		pcall(function()
 			if not sound.IsLoaded then sound.Loaded:Wait(8) end
 		end)
 		if sound.TimeLength>0 then s.dur=sound.TimeLength tAll.Text=fmt(sound.TimeLength) end
 	end)
-	if SET.fade then
-		sound.Volume=0
-		TweenService:Create(sound,TweenInfo.new(0.6),{Volume=muted and 0 or vol}):Play()
-	end
-	sound:Play()
 	pushHist(s)
 	fetchInfo(s)
 	refreshAll()
 end
 local function toggle()
-	if not cur then
-		Toast("先添加一首音乐")
-		return
-	end
+	if not cur then Toast("先添加一首音乐") return end
 	if playing then
-		if SET.fade then
-			TweenService:Create(sound,TweenInfo.new(0.25),{Volume=0}):Play()
-			task.wait(0.25)
-			sound:Pause()
-			sound.Volume=vol
-		else
-			sound:Pause()
-		end
+		sound:Pause()
 		playing=false
 	else
 		sound.Volume=muted and 0 or vol
 		sound:Resume()
-		if SET.fade then
-			sound.Volume=0
-			TweenService:Create(sound,TweenInfo.new(0.4),{Volume=muted and 0 or vol}):Play()
-		end
 		playing=true
 	end
 	setPlayIcon()
 end
 local function nextSong(auto)
 	if #DB.songs==0 then return end
-	if loopI==2 and auto then
-		doPlay(cur) return
-	end
+	if loopI==2 and auto and cur then doPlay(cur) return end
 	local n
-	if shuffle then
-		n=math.random(1,#DB.songs)
-	else
-		n=(curIdx%#DB.songs)+1
-	end
+	if shuffle then n=math.random(1,#DB.songs) else n=(curIdx%#DB.songs)+1 end
 	curIdx=n
 	doPlay(DB.songs[n])
 end
@@ -702,7 +686,7 @@ local function prevSong()
 	doPlay(DB.songs[n])
 end
 sound.Ended:Connect(function()
-	if loopI==2 then
+	if loopI==2 and cur then
 		doPlay(cur)
 	elseif loopI==3 and curIdx>=#DB.songs then
 		playing=false setPlayIcon()
@@ -730,22 +714,22 @@ local function mkRow(parent,song,onSel,onMore,showIdx)
 	reg(a,"TextColor3","sub")
 	local h=Instance.new("TextLabel")
 	h.Size=UDim2.new(0,26,0,26) h.Position=UDim2.new(1,-34,0.5,0) h.AnchorPoint=Vector2.new(1,0.5)
-	h.BackgroundTransparency=1 h.Font=Enum.Font.GothamBold h.TextSize=14 h.Text=song.liked and "♥" or "♡" h.TextColor3=song.liked and Color3.fromRGB(255,110,140) or C("sub") h.ZIndex=21 h.Parent=f
+	h.BackgroundTransparency=1 h.Font=Enum.Font.GothamBold h.TextSize=14 h.Text=song.liked and "H" or "h" h.TextColor3=song.liked and Color3.fromRGB(255,110,140) or C("sub") h.ZIndex=21 h.Parent=f
 	local pb=Instance.new("TextButton")
 	pb.Size=UDim2.new(1,-60,1,0) pb.Position=UDim2.new(0,0,0,0) pb.BackgroundTransparency=1 pb.Text="" pb.ZIndex=22 pb.Parent=f
 	pb.MouseButton1Click:Connect(function() onSel(song) end)
 	local mb=Instance.new("TextButton")
-	mb.Size=UDim2.new(0,34,1,0) mb.Position=UDim2.new(1,-34,0,0) mb.BackgroundTransparency=1 mb.Text="⋮" mb.Font=Enum.Font.GothamBold mb.TextSize=16 mb.TextColor3=C("sub") mb.ZIndex=22 mb.Parent=f
+	mb.Size=UDim2.new(0,34,1,0) mb.Position=UDim2.new(1,-34,0,0) mb.BackgroundTransparency=1 mb.Text="*" mb.Font=Enum.Font.GothamBold mb.TextSize=16 mb.TextColor3=C("sub") mb.ZIndex=22 mb.Parent=f
 	reg(mb,"TextColor3","sub")
 	mb.MouseButton1Click:Connect(function()
 		local p=mb.AbsolutePosition
-		onMore(song,p.X-140,p.Y+20)
+		onMore(song,math.max(4,p.X-140),p.Y+20)
 	end)
 	local fb=Instance.new("TextButton")
 	fb.Size=UDim2.new(0,30,1,0) fb.Position=UDim2.new(1,-64,0,0) fb.BackgroundTransparency=1 fb.Text="" fb.ZIndex=22 fb.Parent=f
 	fb.MouseButton1Click:Connect(function()
 		song.liked=not song.liked
-		h.Text=song.liked and "♥" or "♡"
+		h.Text=song.liked and "H" or "h"
 		h.TextColor3=song.liked and Color3.fromRGB(255,110,140) or C("sub")
 		refreshFav() updateNow()
 	end)
@@ -755,71 +739,64 @@ local curSub=1
 local openPl=nil
 local function clearScroll(sc)
 	for _,c in ipairs(sc:GetChildren()) do
-		if c:IsA("Frame") then c:Destroy() end
+		if c:IsA("Frame") or c:IsA("TextLabel") or c:IsA("TextButton") then c:Destroy() end
 	end
 end
 local function songMenu(s,x,y)
 	local items={
-		{t="▶ 立即播放",f=function()
+		{t="立即播放",f=function()
 			for i,v in ipairs(DB.songs) do if v==s then curIdx=i break end end
-			doPlay(s) Toast("开始播放："..s.name)
+			doPlay(s) Toast("开始播放")
 		end},
-		{t="➕ 下一首播放",f=function()
-			table.insert(DB.queue,1,s.id) Toast("已加入下一首")
-		end},
-		{t="➕ 加到队列末尾",f=function()
-			table.insert(DB.queue,s.id) Toast("已加入队列")
-		end},
-		{t="✎ 重命名",f=function()
+		{t="下一首播放",f=function() table.insert(DB.queue,1,s.id) Toast("已加入下一首") end},
+		{t="加到队列末尾",f=function() table.insert(DB.queue,s.id) Toast("已加入队列") end},
+		{t="重命名",f=function()
 			Modal("重命名歌曲","输入新名称",s.name,function(v,ok)
 				if ok and v~="" then s.name=v refreshAll() updateNow() Toast("已重命名") end
 			end)
 		end},
-		{t="✎ 改作者",f=function()
-			Modal("修改作者","输入作者名",s.artist,function(v,ok)
+		{t="改作者",f=function()
+			Modal("修改作者","作者名",s.artist,function(v,ok)
 				if ok and v~="" then s.artist=v refreshAll() updateNow() end
 			end)
 		end},
-		{t="✎ 改专辑",f=function()
-			Modal("修改专辑","输入专辑名",s.album,function(v,ok)
-				if ok and v~="" then s.album=v refreshAll() updateNow() end
+		{t="改专辑",f=function()
+			Modal("修改专辑","专辑名",s.album,function(v,ok)
+				if ok and v~="" then s.album=v refreshAll() end
 			end)
 		end},
-		{t="🖼 改封面(图片ID)",f=function()
-			Modal("修改封面","输入图片资产 ID",s.cover,function(v,ok)
-				if ok then s.cover=v:gsub("%s","") refreshAll() updateNow() end
+		{t="改封面(图片ID)",f=function()
+			Modal("修改封面","图片资产ID",s.cover,function(v,ok)
+				if ok then s.cover=tostring(v):gsub("%s","") refreshAll() updateNow() end
 			end)
 		end},
-		{t="📋 复制 ID",f=function()
+		{t="复制 ID",f=function()
 			pcall(function() setclipboard(s.id) end)
 			Toast("ID: "..s.id)
 		end},
-		{t="♥ 收藏/取消",f=function()
+		{t="收藏/取消",f=function()
 			s.liked=not s.liked refreshFav() refreshAll() updateNow()
-			Toast(s.liked and "已收藏" or "已取消收藏")
+			Toast(s.liked and "已收藏" or "已取消")
 		end},
-		{t="📁 添加到歌单",f=function()
+		{t="添加到歌单",f=function()
+			if #DB.pls==0 then Toast("先去歌单页新建") return end
 			local sub={}
-			if #DB.pls==0 then Toast("还没有歌单，先去歌单页新建") return end
 			for _,pl in ipairs(DB.pls) do
 				table.insert(sub,{t="→ "..pl.name,f=function()
 					local dup=false
 					for _,i in ipairs(pl.ids) do if i==s.id then dup=true end end
-					if not dup then table.insert(pl.ids,s.id) Toast("已加入 "..pl.name) else Toast("已经在歌单里了") end
+					if not dup then table.insert(pl.ids,s.id) Toast("已加入") else Toast("已存在") end
 				end})
 			end
 			Menu(x,y,sub)
 		end},
-		{t="⏰ 设为闹钟提示",f=function()
-			Toast("演示：已设为提醒音")
-		end},
-		{t="ℹ 查看详情",f=function()
+		{t="查看详情",f=function()
 			Modal("歌曲详情","","",function() end)
 			modalTitle.Text="歌曲详情"
 			modalInput.Text="名称："..s.name.."\n作者："..s.artist.."\n专辑："..s.album.."\nID："..s.id.."\n时长："..fmt(s.dur).."\n收藏："..(s.liked and "是" or "否")
 			modalBox.Visible=true
 		end},
-		{t="🗑 从库中删除",danger=true,f=function()
+		{t="从库中删除",danger=true,f=function()
 			Confirm("删除《"..s.name.."》？",function()
 				for i,v in ipairs(DB.songs) do if v==s then table.remove(DB.songs,i) break end end
 				for _,pl in ipairs(DB.pls) do
@@ -838,17 +815,14 @@ function refreshAll()
 	if curSub==1 then
 		for _,id in ipairs(DB.fav) do local s=findSong(id) if s then table.insert(pool,s) end end
 	elseif curSub==2 then
-		clearScroll(listScroll)
 		local add=Instance.new("TextButton")
 		add.Size=UDim2.new(1,0,0,44) add.BackgroundColor3=C("acc") add.BackgroundTransparency=0.25 add.BorderSizePixel=0
-		add.Text="＋ 新建歌单文件夹" add.Font=Enum.Font.GothamBold add.TextSize=13 add.TextColor3=C("txt") add.ZIndex=20 add.Parent=listScroll
+		add.Text="+ 新建歌单文件夹" add.Font=Enum.Font.GothamBold add.TextSize=13 add.TextColor3=C("txt") add.ZIndex=20 add.Parent=listScroll
 		local ac=Instance.new("UICorner") ac.CornerRadius=UDim.new(0,10) ac.Parent=add
 		reg(add,"BackgroundColor3","acc") reg(add,"TextColor3","txt")
 		add.MouseButton1Click:Connect(function()
 			Modal("新建歌单","输入歌单名称","我的歌单",function(v,ok)
-				if ok and v~="" then
-					table.insert(DB.pls,{name=v,ids={}}) refreshAll() Toast("已创建 "..v)
-				end
+				if ok and v~="" then table.insert(DB.pls,{name=v,ids={}}) refreshAll() Toast("已创建") end
 			end)
 		end)
 		for _,pl in ipairs(DB.pls) do
@@ -858,7 +832,7 @@ function refreshAll()
 			reg(f,"BackgroundColor3","card")
 			local ic2=Instance.new("TextLabel")
 			ic2.Size=UDim2.new(0,42,0,42) ic2.Position=UDim2.new(0,6,0.5,0) ic2.AnchorPoint=Vector2.new(0,0.5)
-			ic2.BackgroundColor3=C("acc") ic2.BackgroundTransparency=0.4 ic2.BorderSizePixel=0 ic2.Text="📁" ic2.TextSize=20 ic2.ZIndex=21 ic2.Parent=f
+			ic2.BackgroundColor3=C("acc") ic2.BackgroundTransparency=0.4 ic2.BorderSizePixel=0 ic2.Text="F" ic2.Font=Enum.Font.GothamBold ic2.TextSize=18 ic2.TextColor3=Color3.fromRGB(255,255,255) ic2.ZIndex=21 ic2.Parent=f
 			local icc=Instance.new("UICorner") icc.CornerRadius=UDim.new(0,8) icc.Parent=ic2
 			reg(ic2,"BackgroundColor3","acc")
 			local n=Instance.new("TextLabel")
@@ -875,30 +849,27 @@ function refreshAll()
 				openPl=pl plName.Text=pl.name backRow.Visible=true listScroll.Visible=false plScroll.Visible=true refreshPl()
 			end)
 			local mb=Instance.new("TextButton")
-			mb.Size=UDim2.new(0,34,1,0) mb.Position=UDim2.new(1,-34,0,0) mb.BackgroundTransparency=1 mb.Text="⋮" mb.Font=Enum.Font.GothamBold mb.TextSize=16 mb.TextColor3=C("sub") mb.ZIndex=22 mb.Parent=f
+			mb.Size=UDim2.new(0,34,1,0) mb.Position=UDim2.new(1,-34,0,0) mb.BackgroundTransparency=1 mb.Text="*" mb.Font=Enum.Font.GothamBold mb.TextSize=16 mb.TextColor3=C("sub") mb.ZIndex=22 mb.Parent=f
 			mb.MouseButton1Click:Connect(function()
 				local p=mb.AbsolutePosition
-				Menu(p.X-140,p.Y+20,{
-					{t="▶ 播放全部",f=function()
+				Menu(math.max(4,p.X-140),p.Y+20,{
+					{t="播放全部",f=function()
 						if #pl.ids==0 then Toast("歌单是空的") return end
-						for _,id in ipairs(pl.ids) do
-							if not findSong(id) then addSong(id) end
-							table.insert(DB.queue,id)
-						end
+						for _,id in ipairs(pl.ids) do if not findSong(id) then addSong(id) end table.insert(DB.queue,id) end
 						local s=findSong(pl.ids[1])
-						curIdx=1 doPlay(s) Toast("播放歌单："..pl.name)
+						curIdx=1 doPlay(s) Toast("播放歌单")
 					end},
-					{t="✎ 重命名歌单",f=function()
-						Modal("重命名歌单","输入新名称",pl.name,function(v,ok)
+					{t="重命名歌单",f=function()
+						Modal("重命名歌单","新名称",pl.name,function(v,ok)
 							if ok and v~="" then pl.name=v refreshAll() end
 						end)
 					end},
-					{t="📋 复制全部 ID",f=function()
+					{t="复制全部 ID",f=function()
 						pcall(function() setclipboard(table.concat(pl.ids,",")) end)
-						Toast("已复制 "..#pl.ids.." 个 ID")
+						Toast("已复制 "..#pl.ids.." 个")
 					end},
-					{t="🗑 删除歌单",danger=true,f=function()
-						Confirm("删除歌单《"..pl.name.."》？",function()
+					{t="删除歌单",danger=true,f=function()
+						Confirm("删除《"..pl.name.."》？",function()
 							for i,v in ipairs(DB.pls) do if v==pl then table.remove(DB.pls,i) break end end
 							refreshAll() Toast("已删除")
 						end)
@@ -908,20 +879,20 @@ function refreshAll()
 		end
 		return
 	elseif curSub==3 then
-		for _,h in ipairs(DB.hist) do local s=findSong(h.id) if s then table.insert(pool,s) end end
+		for _,hh in ipairs(DB.hist) do local s=findSong(hh.id) if s then table.insert(pool,s) end end
 		local cb=Instance.new("TextButton")
 		cb.Size=UDim2.new(1,0,0,38) cb.BackgroundColor3=Color3.fromRGB(150,50,60) cb.BackgroundTransparency=0.2 cb.BorderSizePixel=0
-		cb.Text="🗑 清空历史记录" cb.Font=Enum.Font.GothamBold cb.TextSize=12 cb.TextColor3=Color3.fromRGB(255,255,255) cb.ZIndex=20 cb.Parent=listScroll
+		cb.Text="清空历史记录" cb.Font=Enum.Font.GothamBold cb.TextSize=12 cb.TextColor3=Color3.fromRGB(255,255,255) cb.ZIndex=20 cb.Parent=listScroll
 		local cbc=Instance.new("UICorner") cbc.CornerRadius=UDim.new(0,9) cbc.Parent=cb
 		cb.MouseButton1Click:Connect(function()
-			Confirm("清空全部历史？",function() DB.hist={} refreshAll() Toast("历史已清空") end)
+			Confirm("清空全部历史？",function() DB.hist={} refreshAll() Toast("已清空") end)
 		end)
 	else
 		pool=DB.songs
 	end
 	local cnt=0
 	for _,s in ipairs(pool) do
-		if q=="" or s.name:lower():find(q,1,true) or s.artist:lower():find(q,1,true) or s.id:find(q,1,true) or s.album:lower():find(q,1,true) then
+		if q=="" or tostring(s.name):lower():find(q,1,true) or tostring(s.artist):lower():find(q,1,true) or tostring(s.id):find(q,1,true) then
 			cnt=cnt+1
 			mkRow(listScroll,s,function(sg)
 				for i,v in ipairs(DB.songs) do if v==sg then curIdx=i break end end
@@ -943,7 +914,7 @@ function refreshPl()
 	if #openPl.ids==0 then
 		local e=Instance.new("TextLabel")
 		e.Size=UDim2.new(1,0,0,60) e.BackgroundTransparency=1 e.Font=FONT e.TextSize=12
-		e.Text="空歌单\n用歌曲右侧 ⋮ → 添加到歌单" e.TextColor3=C("sub") e.TextWrapped=true e.ZIndex=20 e.Parent=plScroll
+		e.Text="空歌单\n用歌曲右侧 * → 添加到歌单" e.TextColor3=C("sub") e.TextWrapped=true e.ZIndex=20 e.Parent=plScroll
 		reg(e,"TextColor3","sub")
 		return
 	end
@@ -954,19 +925,18 @@ function refreshPl()
 			for j,v in ipairs(DB.songs) do if v==sg then curIdx=j break end end
 			doPlay(sg)
 		end,function(sg,x,y)
-			local base=songMenu
 			Menu(x,y,{
-				{t="▶ 播放",f=function() doPlay(sg) end},
-				{t="🗑 从此歌单移除",danger=true,f=function()
+				{t="播放",f=function() doPlay(sg) end},
+				{t="从此歌单移除",danger=true,f=function()
 					for k,v in ipairs(openPl.ids) do if v==sg.id then table.remove(openPl.ids,k) break end end
 					refreshPl() refreshAll() Toast("已移除")
 				end},
-				{t="✎ 重命名",f=function()
+				{t="重命名",f=function()
 					Modal("重命名","新名称",sg.name,function(v,ok)
 						if ok and v~="" then sg.name=v refreshPl() updateNow() end
 					end)
 				end},
-				{t="♥ 收藏",f=function() sg.liked=not sg.liked refreshFav() refreshPl() updateNow() end},
+				{t="收藏",f=function() sg.liked=not sg.liked refreshFav() refreshPl() updateNow() end},
 			})
 		end,i)
 	end
@@ -976,7 +946,7 @@ function refreshQueue()
 	if #DB.queue==0 then
 		local e=Instance.new("TextLabel")
 		e.Size=UDim2.new(1,0,0,50) e.BackgroundTransparency=1 e.Font=FONT e.TextSize=12
-		e.Text="队列为空\n歌曲 ⋮ → 加到队列" e.TextColor3=C("sub") e.TextWrapped=true e.ZIndex=101 e.Parent=qScroll
+		e.Text="队列为空\n歌曲 * → 加到队列" e.TextColor3=C("sub") e.TextWrapped=true e.ZIndex=101 e.Parent=qScroll
 		reg(e,"TextColor3","sub")
 		return
 	end
@@ -988,14 +958,14 @@ function refreshQueue()
 			doPlay(sg) refreshQueue()
 		end,function(sg,x,y)
 			Menu(x,y,{
-				{t="▶ 立即播放",f=function() table.remove(DB.queue,i) doPlay(sg) refreshQueue() end},
-				{t="↑ 上移",f=function()
+				{t="立即播放",f=function() table.remove(DB.queue,i) doPlay(sg) refreshQueue() end},
+				{t="上移",f=function()
 					if i>1 then DB.queue[i],DB.queue[i-1]=DB.queue[i-1],DB.queue[i] refreshQueue() end
 				end},
-				{t="↓ 下移",f=function()
+				{t="下移",f=function()
 					if i<#DB.queue then DB.queue[i],DB.queue[i+1]=DB.queue[i+1],DB.queue[i] refreshQueue() end
 				end},
-				{t="🗑 移除",danger=true,f=function() table.remove(DB.queue,i) refreshQueue() Toast("已移除") end},
+				{t="移除",danger=true,f=function() table.remove(DB.queue,i) refreshQueue() Toast("已移除") end},
 			})
 		end,i)
 	end
@@ -1006,33 +976,31 @@ local function refreshLyric()
 	if cur and cur.lyrics and cur.lyrics~="" then
 		for l in tostring(cur.lyrics):gmatch("[^\r\n]+") do if l~="" then table.insert(lines,l) end end
 	end
+	lyricLines=lines
 	if #lines==0 then
 		local e=Instance.new("TextLabel")
 		e.Size=UDim2.new(1,0,0,80) e.BackgroundTransparency=1 e.Font=FONT e.TextSize=13
-		e.Text="暂无歌词\n点右上角「粘贴」自己填\n一行一句，自动均分时间" e.TextColor3=C("sub") e.TextWrapped=true e.ZIndex=102 e.Parent=lyScroll
+		e.Text="暂无歌词\n点右上角「粘贴」自己填\n一行一句" e.TextColor3=C("sub") e.TextWrapped=true e.ZIndex=102 e.Parent=lyScroll
 		reg(e,"TextColor3","sub")
 		return
 	end
-	lyLines=lines
 	for i,l in ipairs(lines) do
 		local t=Instance.new("TextLabel")
+		t.Name="L"..i
 		t.Size=UDim2.new(1,0,0,26) t.BackgroundTransparency=1 t.Font=FONT t.TextSize=14
 		t.Text=l t.TextColor3=C("sub") t.TextWrapped=true t.TextXAlignment=Enum.TextXAlignment.Left t.ZIndex=102 t.Parent=lyScroll
-		t.Name="L"..i
 		reg(t,"TextColor3","sub")
 	end
 end
-lyLines=nil
 bPlay.MouseButton1Click:Connect(toggle)
+coverMask.MouseButton1Click:Connect(toggle)
 bPrev.MouseButton1Click:Connect(prevSong)
 bNext.MouseButton1Click:Connect(function() nextSong(false) end)
-coverBig.MouseButton1Click=function() end
-coverMask.MouseButton1Click:Connect(function() toggle() end)
 chipLoop.MouseButton1Click:Connect(function()
 	loopI=loopI%3+1 chipLoop.Text=LOOPMODE[loopI] Toast(LOOPMODE[loopI])
 end)
 chipShuf.MouseButton1Click:Connect(function()
-	shuffle=not shuffle chipShuf.Text="随机 "..(shuffle and "开" or "关") Toast("随机播放 "..(shuffle and "开启" or "关闭"))
+	shuffle=not shuffle chipShuf.Text="随机 "..(shuffle and "开" or "关") Toast("随机 "..(shuffle and "开" or "关"))
 end)
 chipSpeed.MouseButton1Click:Connect(function()
 	speedI=speedI%#SPEEDS+1
@@ -1049,11 +1017,9 @@ end)
 chipFav.MouseButton1Click:Connect(function()
 	if not cur then Toast("还没播歌") return end
 	cur.liked=not cur.liked refreshFav() updateNow() refreshAll()
-	Toast(cur.liked and "已收藏" or "已取消收藏")
+	Toast(cur.liked and "已收藏" or "已取消")
 end)
-chipLyric.MouseButton1Click:Connect(function()
-	refreshLyric() lyricPage.Visible=true
-end)
+chipLyric.MouseButton1Click:Connect(function() refreshLyric() lyricPage.Visible=true end)
 lyClose.MouseButton1Click:Connect(function() lyricPage.Visible=false end)
 lyEd.MouseButton1Click:Connect(function()
 	if not cur then Toast("先播一首歌") return end
@@ -1064,7 +1030,7 @@ end)
 chipQueue.MouseButton1Click:Connect(function() refreshQueue() queuePage.Visible=true end)
 qClose.MouseButton1Click:Connect(function() queuePage.Visible=false end)
 qClear.MouseButton1Click:Connect(function()
-	Confirm("清空播放队列？",function() DB.queue={} refreshQueue() Toast("队列已清空") end)
+	Confirm("清空播放队列？",function() DB.queue={} refreshQueue() Toast("已清空") end)
 end)
 chipInfo.MouseButton1Click:Connect(function()
 	if not cur then Toast("还没播歌") return end
@@ -1076,7 +1042,7 @@ end)
 vIconBtn.MouseButton1Click:Connect(function()
 	muted=not muted
 	sound.Volume=muted and 0 or vol
-	vIcon.Text=muted and "🔇" or "🔊"
+	vIcon.Text=muted and "M" or "V"
 	Toast(muted and "已静音" or "取消静音")
 end)
 idAdd.MouseButton1Click:Connect(function()
@@ -1112,18 +1078,18 @@ end)
 bPlMenu.MouseButton1Click:Connect(function()
 	if not openPl then return end
 	local p=bPlMenu.AbsolutePosition
-	Menu(p.X-140,p.Y+24,{
-		{t="▶ 播放全部",f=function()
+	Menu(math.max(4,p.X-140),p.Y+24,{
+		{t="播放全部",f=function()
 			if #openPl.ids==0 then Toast("空歌单") return end
 			for _,id in ipairs(openPl.ids) do if not findSong(id) then addSong(id) end table.insert(DB.queue,id) end
 			doPlay(findSong(openPl.ids[1])) Toast("已加入队列")
 		end},
-		{t="✎ 重命名",f=function()
+		{t="重命名",f=function()
 			Modal("重命名歌单","新名称",openPl.name,function(v,ok)
 				if ok and v~="" then openPl.name=v plName.Text=v refreshAll() end
 			end)
 		end},
-		{t="🗑 删除歌单",danger=true,f=function()
+		{t="删除歌单",danger=true,f=function()
 			Confirm("删除《"..openPl.name.."》？",function()
 				for i,v in ipairs(DB.pls) do if v==openPl then table.remove(DB.pls,i) break end end
 				openPl=nil backRow.Visible=false listScroll.Visible=true plScroll.Visible=false refreshAll()
@@ -1145,23 +1111,21 @@ tabNow.MouseButton1Click:Connect(function() switchTab(1) end)
 tabLib.MouseButton1Click:Connect(function() switchTab(2) end)
 tabSet.MouseButton1Click:Connect(function() switchTab(3) end)
 tabNow.TextColor3=C("txt")
-mkSwitch("自动播放下一首",SET.autoplay,function(v) SET.autoplay=v Toast("自动播放 "..(v and "开" or "关")) end)
 mkSwitch("淡入淡出",SET.fade,function(v) SET.fade=v end)
 mkSwitch("频谱动画",SET.spec,function(v) SET.spec=v spec.Visible=v end)
 mkSwitch("启用歌词页",SET.lyric,function(v) SET.lyric=v chipLyric.Visible=v end)
-mkSwitch("后台继续播放",SET.bgplay,function(v) SET.bgplay=v end)
 mkChoice("音质",{"流畅","标准","高清","无损"},2,function(i,v) SET.quality=v Toast("音质："..v) end)
 mkChoice("封面动效",{"静止","旋转","呼吸"},1,function(i,v) SET.cover=v Toast("封面："..v) end)
 mkChoice("主题配色",{"暗紫","纯黑","深海","森语"},1,function(i,v)
-	TI=i SET.theme=i applyTheme() Toast("主题："..v)
+	TI=i applyTheme() Toast("主题："..v)
 end)
-mkActRow("新建歌单文件夹","＋ 新建",C("acc"),function()
+mkActRow("新建歌单文件夹","+ 新建",C("acc"),function()
 	Modal("新建歌单","输入名称","我的歌单",function(v,ok)
 		if ok and v~="" then table.insert(DB.pls,{name=v,ids={}}) refreshAll() Toast("已创建") end
 	end)
 end)
-mkActRow("导入 ID 列表","导入",C("acc"),function()
-	Modal("批量导入","多个 ID 用逗号/换行分隔","",function(v,ok)
+mkActRow("批量导入 ID","导入",C("acc"),function()
+	Modal("批量导入","多个ID用逗号或换行分隔","",function(v,ok)
 		if not ok or v=="" then return end
 		local n=0
 		for id in tostring(v):gmatch("%d+") do addSong(id) n=n+1 end
@@ -1188,9 +1152,7 @@ mkActRow("导入数据(粘贴)","导入",C("acc"),function()
 		end
 	end)
 end)
-mkActRow("睡眠定时设置","设置",C("acc"),function()
-	chipTimer:Activate()
-end)
+mkActRow("睡眠定时设置","设置",C("acc"),function() chipTimer:Activate() end)
 mkActRow("清空全部歌曲","清空",Color3.fromRGB(150,50,60),function()
 	Confirm("清空整个音乐库？",function()
 		DB.songs={} DB.queue={} DB.hist={} DB.fav={}
@@ -1201,66 +1163,48 @@ end)
 mkActRow("快捷键说明","查看",C("card"),function()
 	Modal("操作说明","","",function() end)
 	modalTitle.Text="操作说明"
-	modalInput.Text="空格：播放/暂停\n← →：上/下一首\nM：静音\nL：歌词\nQ：队列\n- 最小化  ✕ 关闭\n拖动顶栏移动窗口"
+	modalInput.Text="空格：播放/暂停\n左右方向键：切歌\nM：静音  L：歌词  Q：队列\n- 最小化  X 关闭\n拖动顶栏移动窗口"
 	modalBox.Visible=true
 end)
-mkActRow("关于 G2R5x 音乐","查看",C("card"),function()
+mkActRow("关于","查看",C("card"),function()
 	Modal("关于","","",function() end)
 	modalTitle.Text="关于"
-	modalInput.Text="G2R5x 音乐\n本地播放器 · 仅自己可听见\n支持：播放/收藏/歌单/历史/队列\n数据存内存，退出前记得导出"
+	modalInput.Text="G2R5x 音乐\n本地播放器 · 仅自己可听见\n支持收藏/歌单/历史/队列\n数据存内存，退出前记得导出"
 	modalBox.Visible=true
-end)
-UIS.InputBegan:Connect(function(i,gp)
-	if gp then return end
-	if modalBox.Visible or not main.Visible then return end
-	if i.KeyCode==Enum.KeyCode.Space then toggle()
-	elseif i.KeyCode==Enum.KeyCode.Right then nextSong(false)
-	elseif i.KeyCode==Enum.KeyCode.Left then prevSong()
-	elseif i.KeyCode==Enum.KeyCode.M then vIconBtn:Activate()
-	elseif i.KeyCode==Enum.KeyCode.L then if SET.lyric then chipLyric:Activate() end
-	elseif i.KeyCode==Enum.KeyCode.Q then chipQueue:Activate()
-	elseif i.KeyCode==Enum.KeyCode.Minus then bMin:Activate()
-	end
 end)
 bSearch.MouseButton1Click:Connect(function()
 	switchTab(2) curSub=4
 	for j,b2 in ipairs(subBtns) do b2.TextColor3=(j==4) and C("txt") or C("sub") end
 	sline.Position=UDim2.new(0.75,8,1,-2)
-	refreshAll() searchBox:CaptureFocus()
+	refreshAll()
 end)
 bMenu.MouseButton1Click:Connect(function()
 	local p=bMenu.AbsolutePosition
-	Menu(p.X-150,p.Y+30,{
-		{t="＋ 添加音乐 ID",f=function() switchTab(1) idInput:CaptureFocus() end},
-		{t="＋ 新建歌单",f=function()
+	Menu(math.max(4,p.X-150),p.Y+30,{
+		{t="添加音乐 ID",f=function() switchTab(1) end},
+		{t="新建歌单",f=function()
 			Modal("新建歌单","名称","我的歌单",function(v,ok)
 				if ok and v~="" then table.insert(DB.pls,{name=v,ids={}}) refreshAll() Toast("已创建") end
 			end)
 		end},
-		{t="📋 复制当前歌曲 ID",f=function()
+		{t="复制当前歌曲 ID",f=function()
 			if cur then pcall(function() setclipboard(cur.id) end) Toast("ID: "..cur.id) else Toast("没在播放") end
 		end},
-		{t="🎨 切换主题",f=function()
-			TI=TI%#THEMES+1 applyTheme() Toast("主题："..THEMES[TI].name)
-		end},
-		{t="📤 导出数据",f=function()
+		{t="切换主题",f=function() TI=TI%#THEMES+1 applyTheme() Toast("主题："..THEMES[TI].name) end},
+		{t="导出数据",f=function()
 			local ok,js=pcall(function() return HS:JSONEncode({songs=DB.songs,pls=DB.pls}) end)
 			Modal("复制保存","","",function() end)
 			modalTitle.Text="导出数据" modalInput.Text=ok and js or "失败" modalBox.Visible=true
 		end},
-		{t="ℹ 关于",f=function()
+		{t="关于",f=function()
 			Modal("关于","","",function() end)
 			modalTitle.Text="关于" modalInput.Text="G2R5x 音乐\n本地播放器" modalBox.Visible=true
 		end},
-		{t="✕ 关闭播放器",danger=true,f=function() gui:Destroy() end},
+		{t="关闭播放器",danger=true,f=function() gui:Destroy() end},
 	})
 end)
-bMin.MouseButton1Click:Connect(function()
-	main.Visible=false mini.Visible=true
-end)
-bX.MouseButton1Click:Connect(function()
-	gui:Destroy()
-end)
+bMin.MouseButton1Click:Connect(function() main.Visible=false mini.Visible=true end)
+bX.MouseButton1Click:Connect(function() gui:Destroy() end)
 local acc=0
 local specT=0
 RS.RenderStepped:Connect(function(dt)
@@ -1271,12 +1215,12 @@ RS.RenderStepped:Connect(function(dt)
 		local r=sound.TimePosition/sound.TimeLength
 		setProg(math.clamp(r,0,1))
 		tCur.Text=fmt(sound.TimePosition)
-		if sound.TimeLength>0 then tAll.Text=fmt(sound.TimeLength) end
+		tAll.Text=fmt(sound.TimeLength)
 	end
 	if SET.spec then
 		specT=specT+0.1
 		for i,b in ipairs(bars) do
-			local h=playing and (3+math.abs(math.sin(specT*3+i*0.7))*26*(0.5+vol*0.5)) or 3
+			local h=playing and (3+math.abs(math.sin(specT*3+i*0.7))*26) or 3
 			b.Size=UDim2.new(0,10,0,h)
 		end
 	end
@@ -1292,31 +1236,28 @@ RS.RenderStepped:Connect(function(dt)
 	end
 	if timerEnd>0 and os.time()>timerEnd then
 		timerEnd=0 timerI=1 chipTimer.Text="定时 关"
-		sound:Stop() playing=false setPlayIcon() Toast("定时结束，已停止")
+		sound:Stop() playing=false setPlayIcon() Toast("定时结束")
 	end
-	if lyLines and lyricPage.Visible and cur and sound.TimeLength>0 then
-		local idx=math.floor(sound.TimePosition/sound.TimeLength*#lyLines)+1
-		for i,l in ipairs(lyLines) do
+	if lyricLines and lyricPage.Visible and cur and sound.TimeLength>0 and #lyricLines>0 then
+		local idx=math.floor(sound.TimePosition/sound.TimeLength*#lyricLines)+1
+		for i=1,#lyricLines do
 			local t=lyScroll:FindFirstChild("L"..i)
 			if t then
-				t.TextColor3=(i==idx) and C("acc") or C("sub")
-				t.TextSize=(i==idx) and 16 or 14
+				if i==idx then t.TextColor3=C("acc") t.TextSize=16 else t.TextColor3=C("sub") t.TextSize=14 end
 			end
 		end
 	end
 end)
-local seeds={
-{id="1848354535",name="示例曲目 1"},
-{id="9125919308",name="示例曲目 2"},
-{id="9046864754",name="示例曲目 3"},
-{id="1839246711",name="示例曲目 4"},
-{id="6606226548",name="示例曲目 5"},
-}
-for _,s in ipairs(seeds) do addSong(s.id,s.name) end
+addSong("1848354535","示例曲目 1")
+addSong("9125919308","示例曲目 2")
+addSong("9046864754","示例曲目 3")
+addSong("1839246711","示例曲目 4")
+addSong("6606226548","示例曲目 5")
 table.insert(DB.pls,{name="我喜欢的音乐",ids={}})
 table.insert(DB.pls,{name="默认收藏夹",ids={}})
 switchTab(1)
 refreshAll()
+setPlayIcon()
 task.spawn(function()
 	local full=APP
 	for i=1,#full do
