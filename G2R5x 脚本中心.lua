@@ -280,7 +280,7 @@ local CFG = {
 	autoFit = true,
 	notifSound = true,
 	confirmBeforeRun = false,
-	recentMax = 3,
+	recentMax = 10,
 	searchShowAll = true,
 	autoHideAfterRun = false,
 	lowPerf = false,
@@ -358,6 +358,7 @@ loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/d6c11700
 
 local FUN_LIB = {
 	{ name = "控制MPC", cat = "娱乐", code = [[loadstring(game:HttpGet("https://pastebin.com/raw/vFS0vfJa"))()]] },
+	{ name = "爬墙脚本", cat = "娱乐", desc = "重置角色恢复", code = [[loadstring(game:HttpGet("https://pastebin.com/raw/5T7KsEWy", true))()]] },
 	{ name = "伪装脚本", cat = "娱乐", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/YirdeX-Dev/scripts/refs/heads/main/伪装欺骗.lua"))()]] },
 }
 
@@ -454,7 +455,7 @@ for _, e in ipairs(SCRIPT_LIB) do
 	if e.cat == "普通脚本" then
 		TabNormal:Button({
 			Title = e.name,
-			Desc = "点击执行",
+			Desc = e.desc or "点击执行",
 			Callback = function()
 				RunScript(e)
 			end,
@@ -471,7 +472,7 @@ for _, e in ipairs(SCRIPT_LIB) do
 	if e.cat == "脚本中心" then
 		TabHub:Button({
 			Title = e.name,
-			Desc = "点击执行",
+			Desc = e.desc or "点击执行",
 			Callback = function()
 				RunScript(e)
 			end,
@@ -1290,7 +1291,7 @@ local TabFun = SafeTab({ Title = "娱乐", Icon = "gamepad-2" })
 for _, e in ipairs(FUN_LIB) do
 	SafeAdd(TabFun, "Button", {
 		Title = e.name,
-		Desc = "点击执行",
+		Desc = e.desc or "点击执行",
 		Callback = function()
 			RunScript(e)
 		end,
@@ -1389,7 +1390,7 @@ task.spawn(function()
 			for _, e in ipairs(FUN_LIB) do
 				if e.name == nm then RECENT[#RECENT + 1] = e break end
 			end
-			if #RECENT >= 3 then break end
+			if #RECENT >= (CFG.recentMax or 10) then break end
 		end
 	end
 end)
@@ -1445,7 +1446,8 @@ PushRecent = function(entry)
 		if RECENT[i].name == entry.name then table.remove(RECENT, i) end
 	end
 	table.insert(RECENT, 1, entry)
-	while #RECENT > 3 do table.remove(RECENT, #RECENT) end
+	local cap = CFG.recentMax or 10
+	while #RECENT > cap do table.remove(RECENT, #RECENT) end
 	local names = {}
 	for _, e in ipairs(RECENT) do names[#names + 1] = e.name end
 	FS.Save("recent", names)
@@ -2175,9 +2177,9 @@ SafeAdd(TabSet, "Toggle", {
 SafeAdd(TabSet, "Slider", {
 	Title = "最近记录上限",
 	Desc = "最多保留几条最近运行",
-	Value = { Min = 1, Max = 10, Default = CFG.recentMax },
+	Value = { Min = 1, Max = 20, Default = CFG.recentMax },
 	Step = 1,
-	Range = { 1, 10 },
+	Range = { 1, 20 },
 	CurrentValue = CFG.recentMax,
 	Callback = function(val)
 		if type(val) == "number" then
@@ -2224,7 +2226,7 @@ SafeAdd(TabSet, "Button", {
 		CFG.autoFit = true
 		CFG.notifSound = true
 		CFG.confirmBeforeRun = false
-		CFG.recentMax = 3
+		CFG.recentMax = 10
 		CFG.searchShowAll = true
 		CFG.autoHideAfterRun = false
 		CFG.lowPerf = false
