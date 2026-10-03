@@ -350,7 +350,7 @@ local SCRIPT_LIB = {
 	{ name = "RT脚本免费版", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://gitee.com/founder-of-xt/rt-script-1/raw/master/script.lua",true))()]] },
 	{ name = "星脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/zilinskaslandon/XingJiaoBen-2026-/refs/heads/main/%E6%98%9F%E8%84%9A%E6%9C%AC.lua"))()]] },
 	{ name = "试炼", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/xiaowanghencai/Shilian/master/shilian_obfuscate.lua"))()]] },
-	{ name = "圣奥里", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/idkidevthings/improved-octo-chainsaw/refs/heads/main/sanx.lua"))()]] },
+	{ name = "圣奥里", cat = "普通脚本", desc = "可能需要翻译因为这是英文", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/idkidevthings/improved-octo-chainsaw/refs/heads/main/sanx.lua"))()]] },
 	{ name = "寒脚本", cat = "普通脚本", code = [[getgenv().SCRIPT_KEY="ec1ecb11-0158-4854-b588-03f5c4c2ab7b";
 loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/d6c1170046d31cebd08f3d38ad1e462e19c29de580b544c6dd7088c2f1de0160/download"))()]] },
 	{ name = "大司马中心", cat = "脚本中心", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/whenheer/dasimav6/refs/heads/main/dasimaV6.txt"))()]] },
@@ -1303,7 +1303,10 @@ local FlyBtnUp = false
 local FlyBtnDown = false
 
 local function CamCFrame()
-	local cam = WS.CurrentCamera
+	local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
+	if not cam then
+		pcall(function() cam = game:GetService("Workspace").CurrentCamera end)
+	end
 	if not cam then return nil end
 	return cam.CFrame
 end
@@ -1429,7 +1432,15 @@ local function FlyTick()
 	local move = Vector3.zero
 	local md = h.MoveDirection
 	if md.Magnitude > 0.01 then
-		move = cf:VectorToWorldSpace(md)
+		local f = cf.LookVector
+		local rt = cf.RightVector
+		local fy = Vector3.new(f.X, 0, f.Z)
+		local ry = Vector3.new(rt.X, 0, rt.Z)
+		if fy.Magnitude < 0.001 then fy = Vector3.new(0, 0, -1) end
+		if ry.Magnitude < 0.001 then ry = Vector3.new(1, 0, 0) end
+		fy = fy.Unit
+		ry = ry.Unit
+		move = (ry * md.X) + (fy * -md.Z)
 	end
 	local vert = 0
 	if FlyMobile then
@@ -1437,6 +1448,7 @@ local function FlyTick()
 	else
 		vert = (FlyKeys.up and 1 or 0) - (FlyKeys.down and 1 or 0)
 	end
+	if move.Magnitude > 0.01 then move = move.Unit end
 	move = move + Vector3.new(0, vert, 0)
 	if move.Magnitude > 0.01 then
 		FlyBV.Velocity = move.Unit * FlySpeed
