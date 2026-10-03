@@ -6,6 +6,7 @@
 local TS = game:GetService("TweenService")
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("RunService")
+local WS = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
 local HUB_NAME = "G2R5x"
@@ -348,6 +349,8 @@ local SCRIPT_LIB = {
 	{ name = "Atomic脚本免费版", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/123fa98/Xi_Pro/refs/heads/main/Atomic-Script"))()]] },
 	{ name = "RT脚本免费版", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://gitee.com/founder-of-xt/rt-script-1/raw/master/script.lua",true))()]] },
 	{ name = "星脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/zilinskaslandon/XingJiaoBen-2026-/refs/heads/main/%E6%98%9F%E8%84%9A%E6%9C%AC.lua"))()]] },
+	{ name = "试炼", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/xiaowanghencai/Shilian/master/shilian_obfuscate.lua"))()]] },
+	{ name = "圣奥里", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/idkidevthings/improved-octo-chainsaw/refs/heads/main/sanx.lua"))()]] },
 	{ name = "寒脚本", cat = "普通脚本", code = [[getgenv().SCRIPT_KEY="ec1ecb11-0158-4854-b588-03f5c4c2ab7b";
 loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/d6c1170046d31cebd08f3d38ad1e462e19c29de580b544c6dd7088c2f1de0160/download"))()]] },
 	{ name = "大司马中心", cat = "脚本中心", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/whenheer/dasimav6/refs/heads/main/dasimaV6.txt"))()]] },
@@ -1285,6 +1288,248 @@ TabLocal:Toggle({
 })
 
 --------------------------------------------------------------------------------
+-- 飞行
+--------------------------------------------------------------------------------
+local FlyOn = false
+local FlyMobile = false
+local FlySpeed = 60
+local FlyBV = nil
+local FlyBG = nil
+local FlyConn = nil
+local FlyKeys = {}
+local FlyUp = 0
+local FlyGui = nil
+local FlyBtnUp = false
+local FlyBtnDown = false
+
+local function CamCFrame()
+	local cam = WS.CurrentCamera
+	if not cam then return nil end
+	return cam.CFrame
+end
+
+local function KillFlyParts()
+	if FlyBV then pcall(function() FlyBV:Destroy() end) FlyBV = nil end
+	if FlyBG then pcall(function() FlyBG:Destroy() end) FlyBG = nil end
+end
+
+local function StopFly()
+	FlyOn = false
+	if FlyConn then pcall(function() FlyConn:Disconnect() end) FlyConn = nil end
+	FlyKeys = {}
+	FlyUp = 0
+	FlyBtnUp = false
+	FlyBtnDown = false
+	KillFlyParts()
+	if FlyGui then pcall(function() FlyGui:Destroy() end) FlyGui = nil end
+	pcall(function()
+		local h = GetHum()
+		if h then h.PlatformStand = false end
+	end)
+end
+
+local function MakeFlyParts()
+	KillFlyParts()
+	local r = GetRoot()
+	if not r then return nil end
+	local ok = pcall(function()
+		FlyBV = Instance.new("BodyVelocity")
+		FlyBV.MaxForce = Vector3.new(9e5, 9e5, 9e5)
+		FlyBV.Velocity = Vector3.zero
+		FlyBV.P = 1250
+		FlyBV.Parent = r
+	end)
+	if not ok then
+		FlyBV = nil
+		pcall(function()
+			FlyBV = Instance.new("LinearVelocity")
+			FlyBV.MaxForce = 9e5
+			FlyBV.VectorVelocity = Vector3.zero
+			FlyBV.Attachment0 = r:FindFirstChild("RootAttachment")
+			FlyBV.Parent = r
+		end)
+	end
+	pcall(function()
+		FlyBG = Instance.new("BodyGyro")
+		FlyBG.MaxTorque = Vector3.new(9e5, 9e5, 9e5)
+		FlyBG.P = 9e4
+		FlyBG.CFrame = r.CFrame
+		FlyBG.Parent = r
+	end)
+	return FlyBV
+end
+
+local function MakeMobileFlyGui()
+	if FlyGui then pcall(function() FlyGui:Destroy() end) FlyGui = nil end
+	local ok = pcall(function()
+		local parent = nil
+		if gethui then pcall(function() parent = gethui() end) end
+		if not parent then pcall(function() parent = game:GetService("CoreGui") end) end
+		if not parent then parent = LP:WaitForChild("PlayerGui") end
+		local g = Instance.new("ScreenGui")
+		g.Name = "G2R5xFly"
+		g.ResetOnSpawn = false
+		g.IgnoreGuiInset = true
+		g.DisplayOrder = 2147483646
+		g.Parent = parent
+		local function mk(txt, posY, onDown, onUp)
+			local b = Instance.new("TextButton", g)
+			b.Size = UDim2.new(0, 62, 0, 62)
+			b.Position = UDim2.new(1, -76, posY, 0)
+			b.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+			b.BackgroundTransparency = 0.25
+			b.Text = txt
+			b.TextColor3 = Color3.fromRGB(255, 255, 255)
+			b.TextSize = 24
+			b.Font = Enum.Font.GothamBold
+			b.Active = true
+			pcall(function()
+				local c = Instance.new("UICorner", b)
+				c.CornerRadius = UDim.new(0, 31)
+			end)
+			local function set(v)
+				if onUp then
+					if v then onDown() else onUp() end
+				end
+			end
+			b.InputBegan:Connect(function(i)
+				if i.UserInputType == Enum.UserInputType.Touch
+					or i.UserInputType == Enum.UserInputType.MouseButton1 then
+					set(true)
+					i.Changed:Connect(function()
+						if i.UserInputState == Enum.UserInputState.End then set(false) end
+					end)
+				end
+			end)
+			b.InputEnded:Connect(function(i)
+				if i.UserInputType == Enum.UserInputType.Touch
+					or i.UserInputType == Enum.UserInputType.MouseButton1 then
+					set(false)
+				end
+			end)
+			return b
+		end
+		mk("UP", 0.42, function() FlyBtnUp = true end, function() FlyBtnUp = false end)
+		mk("DN", 0.49, function() FlyBtnDown = true end, function() FlyBtnDown = false end)
+		FlyGui = g
+	end)
+	return ok
+end
+
+local function FlyTick()
+	local h = GetHum()
+	local r = GetRoot()
+	if not (h and r) then return end
+	if h.PlatformStand ~= true then h.PlatformStand = true end
+	if not FlyBV then
+		if not MakeFlyParts() then return end
+	end
+	local cf = CamCFrame()
+	if not cf then return end
+	local move = Vector3.zero
+	local md = h.MoveDirection
+	if md.Magnitude > 0.01 then
+		move = cf:VectorToWorldSpace(md)
+	end
+	local vert = 0
+	if FlyMobile then
+		vert = (FlyBtnUp and 1 or 0) - (FlyBtnDown and 1 or 0)
+	else
+		vert = (FlyKeys.up and 1 or 0) - (FlyKeys.down and 1 or 0)
+	end
+	move = move + Vector3.new(0, vert, 0)
+	if move.Magnitude > 0.01 then
+		FlyBV.Velocity = move.Unit * FlySpeed
+	else
+		FlyBV.Velocity = Vector3.zero
+	end
+	if FlyBG then
+		FlyBG.CFrame = CFrame.new(r.Position, r.Position + cf.LookVector)
+	end
+end
+
+local function StartFly(mobile)
+	FlyMobile = mobile and true or false
+	FlyOn = true
+	if not MakeFlyParts() then
+		Notify("飞行", "找不到角色，稍后再试", 4)
+		FlyOn = false
+		return false
+	end
+	if FlyMobile then MakeMobileFlyGui() end
+	if FlyConn then pcall(function() FlyConn:Disconnect() end) end
+	FlyConn = RS.Heartbeat:Connect(function()
+		if not FlyOn then return end
+		pcall(FlyTick)
+	end)
+	return true
+end
+
+UIS.InputBegan:Connect(function(input, gpe)
+	if not FlyOn or FlyMobile then return end
+	if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+	local k = input.KeyCode
+	if k == Enum.KeyCode.Space then FlyKeys.up = true end
+	if k == Enum.KeyCode.LeftShift or k == Enum.KeyCode.RightShift
+		or k == Enum.KeyCode.LeftControl or k == Enum.KeyCode.RightControl
+		or k == Enum.KeyCode.LeftAlt then FlyKeys.down = true end
+end)
+UIS.InputEnded:Connect(function(input)
+	if not FlyOn or FlyMobile then return end
+	if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+	local k = input.KeyCode
+	if k == Enum.KeyCode.Space then FlyKeys.up = false end
+	if k == Enum.KeyCode.LeftShift or k == Enum.KeyCode.RightShift
+		or k == Enum.KeyCode.LeftControl or k == Enum.KeyCode.RightControl
+		or k == Enum.KeyCode.LeftAlt then FlyKeys.down = false end
+end)
+
+SafeAdd(TabLocal, "Section", { Title = "飞行" })
+TabLocal:Toggle({
+	Title = "电脑端飞行",
+	Desc = "WASD 移动，空格上升，Shift/Ctrl 下降",
+	Value = false,
+	Callback = function(state)
+		if state then
+			StopFly()
+			if StartFly(false) then
+				Notify("飞行", "电脑端飞行已开启：WASD + 空格/Shift", 4)
+			end
+		else
+			StopFly()
+			Notify("飞行", "飞行已关闭", 3)
+		end
+	end,
+})
+TabLocal:Toggle({
+	Title = "手机端飞行",
+	Desc = "右侧两个圆按钮控升降，摇杆控方向",
+	Value = false,
+	Callback = function(state)
+		if state then
+			StopFly()
+			if StartFly(true) then
+				Notify("飞行", "手机端飞行已开启：右侧 UP/DN 按钮", 4)
+			end
+		else
+			StopFly()
+			Notify("飞行", "飞行已关闭", 3)
+		end
+	end,
+})
+SafeAdd(TabLocal, "Slider", {
+	Title = "飞行速度",
+	Desc = "16 - 300",
+	Value = { Min = 16, Max = 300, Default = 60 },
+	Step = 1,
+	Range = { 16, 300 },
+	CurrentValue = 60,
+	Callback = function(val)
+		if type(val) == "number" then FlySpeed = val end
+	end,
+})
+
+--------------------------------------------------------------------------------
 -- 娱乐
 --------------------------------------------------------------------------------
 local TabFun = SafeTab({ Title = "娱乐", Icon = "gamepad-2" })
@@ -1317,6 +1562,12 @@ LP.CharacterAdded:Connect(function()
 			task.wait(0.3)
 			RecordSafe()
 			DoNC()
+		end
+		if FlyOn then
+			local mb = FlyMobile
+			StopFly()
+			task.wait(0.4)
+			StartFly(mb)
 		end
 	end)
 end)
