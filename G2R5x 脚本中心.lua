@@ -351,6 +351,9 @@ local SCRIPT_LIB = {
 	{ name = "星脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/zilinskaslandon/XingJiaoBen-2026-/refs/heads/main/%E6%98%9F%E8%84%9A%E6%9C%AC.lua"))()]] },
 	{ name = "试炼", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/xiaowanghencai/Shilian/master/shilian_obfuscate.lua"))()]] },
 	{ name = "圣奥里", cat = "普通脚本", desc = "可能需要翻译因为这是英文", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/idkidevthings/improved-octo-chainsaw/refs/heads/main/sanx.lua"))()]] },
+	{ name = "黑白脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet('https://raw.githubusercontent.com/tfcygvunbind/Apple/main/黑白脚本加载器'))()]] },
+	{ name = "黑白脚本轻量版", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/tfcygvunbind/557/main/黑白脚本轻"))()]] },
+	{ name = "R15无敌少侠", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://obj.wearedevs.net/197198/scripts/invincible%20flight%20animation.lua"))()]] },
 	{ name = "寒脚本", cat = "普通脚本", code = [[getgenv().SCRIPT_KEY="ec1ecb11-0158-4854-b588-03f5c4c2ab7b";
 loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/d6c1170046d31cebd08f3d38ad1e462e19c29de580b544c6dd7088c2f1de0160/download"))()]] },
 	{ name = "大司马中心", cat = "脚本中心", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/whenheer/dasimav6/refs/heads/main/dasimaV6.txt"))()]] },
@@ -488,8 +491,8 @@ end
 --------------------------------------------------------------------------------
 local TabLocal = SafeTab({ Title = "本地玩家修改", Icon = "person-standing" })
 
-local SPD_MODES = { "方式一 WalkSpeed", "方式二 力度推进", "方式三 坐标位移" }
-local JMP_MODES = { "方式一 JumpPower", "方式二 JumpHeight", "方式三 起跳推力" }
+local SPD_MODES = { "方式一 WalkSpeed", "方式二 力度推进", "方式三 坐标位移", "方式四 强力推进", "方式五 速度直写" }
+local JMP_MODES = { "方式一 JumpPower", "方式二 JumpHeight", "方式三 起跳推力", "方式四 脉冲上抛", "方式五 双通道叠加" }
 
 local SpeedMode = 1
 local JumpMode = 1
@@ -569,6 +572,60 @@ applySpeed[3] = function(hum, v)
 				local mv = h.MoveDirection
 				if mv.Magnitude > 0.01 then
 					r.CFrame = r.CFrame + (mv.Unit * (v / 60))
+				end
+			end)
+			RS.Heartbeat:Wait()
+		end
+	end)
+end
+
+applySpeed[4] = function(hum, v)
+	pcall(function() hum.WalkSpeed = 16 end)
+	local root = GetRoot()
+	if not root then return end
+	EnsureVel(root)
+	task.spawn(function()
+		while ModOn and SpeedMode == 4 do
+			pcall(function()
+				local h = GetHum()
+				local r = GetRoot()
+				if not (h and r) then return end
+				if VelObj and VelObj.Parent == r then
+					local mv = h.MoveDirection
+					if mv.Magnitude > 0.01 then
+						VelObj.Velocity = Vector3.new(mv.X * v, 0, mv.Z * v)
+						VelObj.MaxForce = Vector3.new(1e5, 0, 1e5)
+					else
+						VelObj.Velocity = Vector3.new(0, 0, 0)
+						VelObj.MaxForce = Vector3.new(1e5, 0, 1e5)
+					end
+				end
+			end)
+			RS.Heartbeat:Wait()
+		end
+		pcall(function()
+			if VelObj then VelObj.MaxForce = Vector3.new(0, 0, 0) VelObj.Velocity = Vector3.new(0, 0, 0) end
+		end)
+	end)
+end
+
+applySpeed[5] = function(hum, v)
+	pcall(function() hum.WalkSpeed = v end)
+	task.spawn(function()
+		while ModOn and SpeedMode == 5 do
+			pcall(function()
+				local h = GetHum()
+				local r = GetRoot()
+				if not (h and r) then return end
+				if math.abs((h.WalkSpeed or 0) - v) > 1 then h.WalkSpeed = v end
+				local mv = h.MoveDirection
+				if mv.Magnitude > 0.01 then
+					local cur = r.AssemblyLinearVelocity
+					local want = v
+					local flat = Vector3.new(cur.X, 0, cur.Z)
+					if flat.Magnitude < (want * 0.9) then
+						r.AssemblyLinearVelocity = Vector3.new(mv.X * want, cur.Y, mv.Z * want)
+					end
 				end
 			end)
 			RS.Heartbeat:Wait()
@@ -658,6 +715,62 @@ applyJump[3] = function(hum, v)
 	end)
 end
 
+applyJump[4] = function(hum, v)
+	StopJumpLoop()
+	JumpConn = UIS.JumpRequest:Connect(function()
+		if not ModOn or JumpMode ~= 4 then return end
+		pcall(function()
+			local h = GetHum()
+			local r = GetRoot()
+			if not (h and r) then return end
+			if h:GetState() == Enum.HumanoidStateType.Dead then return end
+			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
+			local vel = Instance.new("BodyVelocity")
+			vel.MaxForce = Vector3.new(0, 1e6, 0)
+			vel.Velocity = Vector3.new(0, v, 0)
+			vel.P = 1250
+			vel.Parent = r
+			task.delay(0.18, function()
+				pcall(function() vel:Destroy() end)
+			end)
+		end)
+	end)
+end
+
+applyJump[5] = function(hum, v)
+	StopJumpLoop()
+	pcall(function()
+		local h = GetHum()
+		if h then
+			h.UseJumpPower = true
+			h.JumpPower = v
+		end
+	end)
+	JumpConn = RS.Stepped:Connect(function()
+		if not ModOn or JumpMode ~= 5 then return end
+		pcall(function()
+			local h = GetHum()
+			if not h then return end
+			if h.UseJumpPower ~= true then h.UseJumpPower = true end
+			if math.abs((h.JumpPower or 0) - v) > 0.01 then h.JumpPower = v end
+		end)
+	end)
+	JumpConn2 = UIS.JumpRequest:Connect(function()
+		if not ModOn or JumpMode ~= 5 then return end
+		pcall(function()
+			local h = GetHum()
+			local r = GetRoot()
+			if not (h and r) then return end
+			if h:GetState() == Enum.HumanoidStateType.Dead then return end
+			task.wait(0.03)
+			local cur = r.AssemblyLinearVelocity
+			if cur.Y < v * 0.6 then
+				r.AssemblyLinearVelocity = Vector3.new(cur.X, v, cur.Z)
+			end
+		end)
+	end)
+end
+
 local function DoSpeed()
 	pcall(function()
 		local h = GetHum()
@@ -691,7 +804,7 @@ local function CountAir()
 	IJAir = IJAir + 1
 end
 
-local IJ_MODES = { "方式一 状态重置", "方式二 冷却计数", "方式三 速度注入" }
+local IJ_MODES = { "方式一 状态重置", "方式二 冷却计数", "方式三 速度注入", "方式四 复位+注入", "方式五 强跳+注入" }
 local IJMode = 1
 local IJAuto = true
 local IJOn = false
@@ -778,10 +891,56 @@ applyIJ[3] = function(hum, v)
 	end)
 end
 
+applyIJ[4] = function(hum, v)
+	StopIJ()
+	BindIJReset()
+	IJConn = UIS.JumpRequest:Connect(function()
+		if not IJOn or IJMode ~= 4 then return end
+		pcall(function()
+			local h = GetHum()
+			local r = GetRoot()
+			if not (h and r) then return end
+			if h:GetState() == Enum.HumanoidStateType.Dead then return end
+			if IJMax > 0 and IJAir >= IJMax and not IsGrounded(h) then return end
+			if not IsGrounded(h) then IJAir = IJAir + 1 end
+			pcall(function()
+				h:ChangeState(Enum.HumanoidStateType.Jumping)
+			end)
+			task.wait(0.02)
+			r.AssemblyLinearVelocity = Vector3.new(
+				r.AssemblyLinearVelocity.X, v, r.AssemblyLinearVelocity.Z
+			)
+		end)
+	end)
+end
+
+applyIJ[5] = function(hum, v)
+	StopIJ()
+	BindIJReset()
+	IJConn = UIS.JumpRequest:Connect(function()
+		if not IJOn or IJMode ~= 5 then return end
+		pcall(function()
+			local h = GetHum()
+			local r = GetRoot()
+			if not (h and r) then return end
+			if h:GetState() == Enum.HumanoidStateType.Dead then return end
+			if IJMax > 0 and IJAir >= IJMax and not IsGrounded(h) then return end
+			if not IsGrounded(h) then IJAir = IJAir + 1 end
+			pcall(function() h.PlatformStand = false end)
+			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
+			task.wait(0.02)
+			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
+			r.AssemblyLinearVelocity = Vector3.new(
+				r.AssemblyLinearVelocity.X, v, r.AssemblyLinearVelocity.Z
+			)
+		end)
+	end)
+end
+
 --------------------------------------------------------------------------------
 -- 穿墙 3 种方式
 --------------------------------------------------------------------------------
-local NC_MODES = { "方式一 逐帧关碰撞", "方式二 碰撞分组", "方式三 RootPart穿透" }
+local NC_MODES = { "方式一 逐帧关碰撞", "方式二 碰撞分组", "方式三 RootPart穿透", "方式四 闪现穿透", "方式五 关碰撞+推进" }
 local NCMode = 1
 local NCAuto = true
 local NCOn = false
@@ -962,6 +1121,57 @@ applyNC[3] = function()
 	end)
 end
 
+applyNC[4] = function()
+	local c = LP.Character
+	if not c then return end
+	local root = c:FindFirstChild("HumanoidRootPart") or c.PrimaryPart
+	if not root then return end
+	if NCSaved[root] == nil then NCSaved[root] = root.CanCollide end
+	root.CanCollide = false
+	if NCConn then pcall(function() NCConn:Disconnect() end) end
+	NCConn = RS.Stepped:Connect(function()
+		if not NCOn then return end
+		pcall(function()
+			local cc = LP.Character
+			if not cc then return end
+			local r = cc:FindFirstChild("HumanoidRootPart") or cc.PrimaryPart
+			if not r then return end
+			if r.CanCollide then r.CanCollide = false end
+			local h = cc:FindFirstChildOfClass("Humanoid")
+			if h and h.MoveDirection.Magnitude > 0.01 then
+				pcall(function()
+					r.CFrame = r.CFrame + (h.MoveDirection.Unit * (NCVal / 20))
+				end)
+			end
+		end)
+	end)
+end
+
+applyNC[5] = function()
+	for _, p in ipairs(CharParts()) do
+		if NCSaved[p] == nil then NCSaved[p] = p.CanCollide end
+	end
+	if NCConn then pcall(function() NCConn:Disconnect() end) end
+	NCConn = RS.Stepped:Connect(function()
+		if not NCOn then return end
+		pcall(function()
+			local cc = LP.Character
+			if not cc then return end
+			local r = cc:FindFirstChild("HumanoidRootPart") or cc.PrimaryPart
+			for _, p in ipairs(CharParts()) do
+				if NCSaved[p] == nil then NCSaved[p] = p.CanCollide end
+				if p.CanCollide then p.CanCollide = false end
+			end
+			if r then
+				local h = cc:FindFirstChildOfClass("Humanoid")
+				if h and h.MoveDirection.Magnitude > 0.01 then
+					r.CFrame = r.CFrame + (h.MoveDirection.Unit * (NCVal / 45))
+				end
+			end
+		end)
+	end)
+end
+
 local function DoIJ()
 	pcall(function()
 		local h = GetHum()
@@ -981,68 +1191,178 @@ local function DoNC()
 	end)
 end
 
+local SWITCH_COOL = 3.5
+local FAIL_NEED = 2
+local MANUAL_PROTECT = 10
+
+local AutoSt = {}
+local function StOf(key)
+	if not AutoSt[key] then
+		AutoSt[key] = { lastSwitch = 0, fail = 0, tried = {}, dead = false, manualUntil = 0 }
+	end
+	return AutoSt[key]
+end
+
+local function MarkManual(key)
+	local st = StOf(key)
+	st.tried = {}
+	st.fail = 0
+	st.dead = false
+	st.manualUntil = tick() + MANUAL_PROTECT
+end
+
+local SpeedProbe = { pos = nil, t = 0 }
+
+local function MeasureFlat()
+	local r = GetRoot()
+	if not r then return nil end
+	local now = tick()
+	local p = r.Position
+	if SpeedProbe.pos and (now - SpeedProbe.t) > 0.12 then
+		local d = Vector3.new(p.X - SpeedProbe.pos.X, 0, p.Z - SpeedProbe.pos.Z).Magnitude
+		local v = d / (now - SpeedProbe.t)
+		SpeedProbe.pos = p
+		SpeedProbe.t = now
+		return v
+	end
+	SpeedProbe.pos = p
+	SpeedProbe.t = now
+	return nil
+end
+
+local function TestSpeed(mode)
+	local h = GetHum()
+	if not h then return true end
+	if mode == 1 or mode == 5 then
+		local ws = nil
+		pcall(function() ws = h.WalkSpeed end)
+		if ws == nil then return false end
+		if math.abs(ws - SpeedVal) > 1.5 then return false end
+		if mode == 1 then return true end
+	end
+	if h.MoveDirection.Magnitude < 0.01 then return true end
+	local v = MeasureFlat()
+	if v == nil then return true end
+	return v >= (SpeedVal * 0.3)
+end
+
+local function TestJump(mode)
+	local h = GetHum()
+	if not h then return true end
+	local jp, jh, ujp = nil, nil, nil
+	pcall(function() jp = h.JumpPower end)
+	pcall(function() jh = h.JumpHeight end)
+	pcall(function() ujp = h.UseJumpPower end)
+	if mode == 1 or mode == 5 then
+		if jp == nil or ujp ~= true then return false end
+		if math.abs(jp - JumpVal) > 1.5 then return false end
+		return true
+	end
+	if mode == 2 then
+		if jh == nil or ujp ~= false or jh <= 0 then return false end
+		return true
+	end
+	return true
+end
+
+local function TestIJ(mode)
+	return true
+end
+
+local function TestNC(mode)
+	local c = LP.Character
+	if not c then return true end
+	local r = c:FindFirstChild("HumanoidRootPart") or c.PrimaryPart
+	if not r then return true end
+	if mode == 2 then return true end
+	local bad = 0
+	for _, p in ipairs(CharParts()) do
+		if p.CanCollide then bad = bad + 1 end
+	end
+	return bad == 0
+end
+
+local function TryAdvance(key, modeVar, setter, total, tester, label)
+	local st = StOf(key)
+	if st.dead then return end
+	if tick() < st.manualUntil then return end
+	if (tick() - st.lastSwitch) < SWITCH_COOL then return end
+	if not tester(modeVar()) then
+		st.fail = st.fail + 1
+		if st.fail < FAIL_NEED then return end
+		st.fail = 0
+		st.tried[modeVar()] = true
+		local next = nil
+		for i = 1, total do
+			local cand = (modeVar() % total) + i
+			if cand > total then cand = cand - total end
+			if not st.tried[cand] then next = cand break end
+		end
+		if not next then
+			st.dead = true
+			if label then Notify(label, "全部方式都试过了，自动切换已停", 5) end
+			return
+		end
+		setter(next)
+		st.lastSwitch = tick()
+		if label then Notify(label, "方式" .. tostring(modeVar()) .. "无效，切到方式" .. tostring(next), 3) end
+		return true
+	else
+		st.fail = 0
+	end
+end
+
 local function AutoWatch()
 	task.spawn(function()
 		while ModOn do
 			pcall(function()
-				local h = GetHum()
-				if not h then return end
-
 				if SpeedAuto then
-					local ws = nil
-					pcall(function() ws = h.WalkSpeed end)
-					if SpeedMode == 1 then
-						if ws == nil or math.abs(ws - SpeedVal) > 1 then
-							SpeedMode = 2
-							Notify("速度", "方式一被覆盖，切到方式二", 3)
-							DoSpeed()
-						end
-					elseif SpeedMode == 2 then
-						local r = GetRoot()
-						if r then
-							local mv = h.MoveDirection
-							local flat = Vector3.new(r.AssemblyLinearVelocity.X, 0, r.AssemblyLinearVelocity.Z).Magnitude
-							if mv.Magnitude > 0.01 and flat < (SpeedVal * 0.4) then
-								SpeedMode = 3
-								Notify("速度", "方式二无效，切到方式三", 3)
-								DoSpeed()
-							end
-						end
-					elseif SpeedMode == 3 then
-						local r = GetRoot()
-						if r then
-							local mv = h.MoveDirection
-							local flat = Vector3.new(r.AssemblyLinearVelocity.X, 0, r.AssemblyLinearVelocity.Z).Magnitude
-							if mv.Magnitude > 0.01 and flat < (SpeedVal * 0.4) then
-								SpeedMode = 1
-								Notify("速度", "回到方式一", 3)
-								DoSpeed()
-							end
-						end
-					end
+					local changed = TryAdvance("speed",
+						function() return SpeedMode end,
+						function(v) SpeedMode = v DoSpeed() end,
+						5, TestSpeed, "速度")
+					if changed then return end
 				end
-
 				if JumpAuto then
-					local jp, jh, ujp = nil, nil, nil
-					pcall(function() jp = h.JumpPower end)
-					pcall(function() jh = h.JumpHeight end)
-					pcall(function() ujp = h.UseJumpPower end)
-					if JumpMode == 1 then
-						if jp == nil or ujp ~= true or math.abs(jp - JumpVal) > 1 then
-							JumpMode = 2
-							Notify("跳跃", "方式一被覆盖，切到方式二", 3)
-							DoJump()
-						end
-					elseif JumpMode == 2 then
-						if jh == nil or ujp ~= false or jh <= 0 then
-							JumpMode = 3
-							Notify("跳跃", "方式二不支持，切到方式三", 3)
-							DoJump()
-						end
-					end
+					TryAdvance("jump",
+						function() return JumpMode end,
+						function(v) JumpMode = v DoJump() end,
+						5, TestJump, "跳跃")
 				end
 			end)
-			task.wait(1.2)
+			task.wait(1.5)
+		end
+	end)
+end
+
+local function IJWatch()
+	task.spawn(function()
+		while IJOn do
+			pcall(function()
+				if IJAuto then
+					TryAdvance("ij",
+						function() return IJMode end,
+						function(v) IJMode = v DoIJ() end,
+						5, TestIJ, "无限跳")
+				end
+			end)
+			task.wait(2)
+		end
+	end)
+end
+
+local function NCWatch()
+	task.spawn(function()
+		while NCOn do
+			pcall(function()
+				if NCAuto then
+					TryAdvance("nc",
+						function() return NCMode end,
+						function(v) NCMode = v DoNC() end,
+						5, TestNC, "穿墙")
+				end
+			end)
+			task.wait(2)
 		end
 	end)
 end
@@ -1099,7 +1419,9 @@ SafeAdd(TabLocal, "Dropdown", {
 		for i, v in ipairs(SPD_MODES) do
 			if v == pick then SpeedMode = i end
 		end
+		MarkManual("speed")
 		if ModOn then DoSpeed() end
+		MarkManual("speed")
 	end,
 })
 
@@ -1141,6 +1463,7 @@ SafeAdd(TabLocal, "Dropdown", {
 		for i, v in ipairs(JMP_MODES) do
 			if v == pick then JumpMode = i end
 		end
+		MarkManual("jump")
 		if ModOn then DoJump() end
 	end,
 })
@@ -1160,10 +1483,14 @@ TabLocal:Toggle({
 	Callback = function(state)
 		IJOn = state
 		if state then
+			MarkManual("ij")
 			DoIJ()
+			IJWatch()
 			Notify("本地修改", "无限跳跃已开启（空中按跳跃键）", 3)
 		else
 			StopIJ()
+			StOf("ij").dead = false
+			StOf("ij").tried = {}
 			Notify("本地修改", "无限跳跃已关闭", 3)
 		end
 	end,
@@ -1208,6 +1535,7 @@ SafeAdd(TabLocal, "Dropdown", {
 		for i, v in ipairs(IJ_MODES) do
 			if v == pick then IJMode = i end
 		end
+		MarkManual("ij")
 		if IJOn then DoIJ() end
 	end,
 })
@@ -1228,7 +1556,9 @@ TabLocal:Toggle({
 			NCOn = true
 			NCLastSafe = nil
 			RecordSafe()
+			MarkManual("nc")
 			DoNC()
+			NCWatch()
 			Notify("本地修改", "穿墙已开启", 3)
 		else
 			StopNC()
@@ -1276,6 +1606,7 @@ SafeAdd(TabLocal, "Dropdown", {
 		for i, v in ipairs(NC_MODES) do
 			if v == pick then NCMode = i end
 		end
+		MarkManual("nc")
 		if NCOn then DoNC() end
 	end,
 })
@@ -1284,6 +1615,371 @@ TabLocal:Toggle({
 	Value = true,
 	Callback = function(state)
 		NCAuto = state
+	end,
+})
+
+--------------------------------------------------------------------------------
+-- 视觉 / 身体 增强
+--------------------------------------------------------------------------------
+local OldLight = nil
+local LightOn = false
+
+local function SetFullbright(on)
+	pcall(function()
+		local l = game:GetService("Lighting")
+		if on then
+			OldLight = { l.Ambient, l.Brightness, l.OutdoorAmbient, l.GlobalShadows, l.FogEnd }
+			l.Ambient = Color3.fromRGB(255, 255, 255)
+			l.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+			l.Brightness = 3
+			l.GlobalShadows = false
+			l.FogEnd = 1e6
+		elseif OldLight then
+			l.Ambient = OldLight[1]
+			l.Brightness = OldLight[2]
+			l.OutdoorAmbient = OldLight[3]
+			l.GlobalShadows = OldLight[4]
+			l.FogEnd = OldLight[5]
+			OldLight = nil
+		end
+	end)
+end
+
+local NVConn = nil
+local function SetNightVision(on)
+	if NVConn then pcall(function() NVConn:Disconnect() end) NVConn = nil end
+	if not on then
+		pcall(function()
+			local l = game:GetService("Lighting")
+			for _, e in ipairs(l:GetChildren()) do
+				if e.Name == "G2R5xNV" then e:Destroy() end
+			end
+		end)
+		return
+	end
+	pcall(function()
+		local l = game:GetService("Lighting")
+		local cc = Instance.new("ColorCorrectionEffect")
+		cc.Name = "G2R5xNV"
+		cc.Brightness = 0.35
+		cc.Contrast = 0.4
+		cc.Saturation = -1
+		cc.TintColor = Color3.fromRGB(120, 255, 140)
+		cc.Parent = l
+	end)
+end
+
+local FOVOn = false
+local FOVVal = 120
+local function SetFOV(on)
+	FOVOn = on
+	pcall(function()
+		local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
+		if cam then cam.FieldOfView = on and FOVVal or 70 end
+	end)
+end
+
+local InfStam = false
+local StamConn = nil
+local function SetInfStamina(on)
+	InfStam = on
+	if StamConn then pcall(function() StamConn:Disconnect() end) StamConn = nil end
+	if not on then return end
+	StamConn = RS.Heartbeat:Connect(function()
+		if not InfStam then return end
+		pcall(function()
+			local c = LP.Character
+			if not c then return end
+			for _, d in ipairs(c:GetDescendants()) do
+				if d:IsA("NumberValue") or d:IsA("IntValue") or d:IsA("DoubleConstrainedValue") then
+					local n = d.Name:lower()
+					if n:find("stam") or n:find("energy") or n:find("stamina") or n == "体力" then
+						pcall(function() d.Value = d.Value end)
+					end
+				end
+			end
+			local h = c:FindFirstChildOfClass("Humanoid")
+			if h then
+				pcall(function()
+					if h.Health < h.MaxHealth and h.MaxHealth > 0 then h.Health = h.MaxHealth end
+				end)
+			end
+		end)
+	end)
+end
+
+local NoFall = false
+local NoFallConn = nil
+local function SetNoFall(on)
+	NoFall = on
+	if NoFallConn then pcall(function() NoFallConn:Disconnect() end) NoFallConn = nil end
+	if not on then return end
+	NoFallConn = RS.Heartbeat:Connect(function()
+		if not NoFall then return end
+		pcall(function()
+			local h = GetHum()
+			local r = GetRoot()
+			if not (h and r) then return end
+			local v = r.AssemblyLinearVelocity
+			if v.Y < -90 then
+				r.AssemblyLinearVelocity = Vector3.new(v.X, -90, v.Z)
+			end
+		end)
+	end)
+end
+
+local AntiKB = false
+local KBConn = nil
+local function SetAntiKB(on)
+	AntiKB = on
+	if KBConn then pcall(function() KBConn:Disconnect() end) KBConn = nil end
+	if not on then return end
+	KBConn = RS.Stepped:Connect(function()
+		if not AntiKB then return end
+		pcall(function()
+			local h = GetHum()
+			if h then h.PlatformStand = false end
+			local r = GetRoot()
+			if not r then return end
+			for _, d in ipairs(r:GetChildren()) do
+				if d:IsA("BodyVelocity") or d:IsA("VectorForce") or d:IsA("BodyThrust") then
+					if d.Name ~= "G2R5xVel" and d.Name ~= "G2R5xFlyVel" then
+						pcall(function() d:Destroy() end)
+					end
+				end
+			end
+		end)
+	end)
+end
+
+local ClickTP = false
+local TPConn = nil
+local function SetClickTP(on)
+	ClickTP = on
+	if TPConn then pcall(function() TPConn:Disconnect() end) TPConn = nil end
+	if not on then return end
+	local mouse = LP:GetMouse()
+	TPConn = mouse.Button1Down:Connect(function()
+		if not ClickTP then return end
+		pcall(function()
+			local c = LP.Character
+			if not c then return end
+			local r = c:FindFirstChild("HumanoidRootPart") or c.PrimaryPart
+			if not r then return end
+			if mouse.Target then
+				r.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 4, 0))
+			end
+		end)
+	end)
+end
+
+local AutoJumpOn = false
+local AJConn = nil
+local function SetAutoJump(on)
+	AutoJumpOn = on
+	if AJConn then pcall(function() AJConn:Disconnect() end) AJConn = nil end
+	if not on then return end
+	AJConn = RS.Heartbeat:Connect(function()
+		if not AutoJumpOn then return end
+		pcall(function()
+			local h = GetHum()
+			if h and h.MoveDirection.Magnitude > 0.01 then
+				if h:GetState() ~= Enum.HumanoidStateType.Jumping
+					and h:GetState() ~= Enum.HumanoidStateType.Freefall then
+					h:ChangeState(Enum.HumanoidStateType.Jumping)
+				end
+			end
+		end)
+	end)
+end
+
+local ScaleVal = 1
+local function EnsureScale(h)
+	local names = { "BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale" }
+	for _, n in ipairs(names) do
+		if not h:FindFirstChild(n) then
+			pcall(function()
+				local nv = Instance.new("NumberValue")
+				nv.Name = n
+				nv.Value = 1
+				nv.Parent = h
+			end)
+		end
+	end
+end
+
+local function SetBodyScale(v)
+	ScaleVal = v
+	pcall(function()
+		local h = GetHum()
+		if not h then return end
+		EnsureScale(h)
+		pcall(function()
+			if h:FindFirstChild("BodyHeightScale") then h.BodyHeightScale.Value = v end
+			if h:FindFirstChild("BodyWidthScale") then h.BodyWidthScale.Value = v end
+			if h:FindFirstChild("BodyDepthScale") then h.BodyDepthScale.Value = v end
+			if h:FindFirstChild("HeadScale") then h.HeadScale.Value = v end
+		end)
+	end)
+end
+
+local ThirdOn = false
+local ThirdConn = nil
+local function SetThird(on)
+	ThirdOn = on
+	if ThirdConn then pcall(function() ThirdConn:Disconnect() end) ThirdConn = nil end
+	pcall(function()
+		local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
+		if cam then cam.CameraSubject = nil end
+	end)
+	if not on then
+		pcall(function()
+			local h = GetHum()
+			local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
+			if h and cam then cam.CameraSubject = h end
+		end)
+		return
+	end
+	pcall(function()
+		LP.CameraMaxZoomDistance = 25
+	end)
+	ThirdConn = RS.Heartbeat:Connect(function()
+		if not ThirdOn then return end
+		pcall(function()
+			local c = LP.Character
+			local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
+			if not (c and cam) then return end
+			local head = c:FindFirstChild("Head")
+			if head then cam.CameraSubject = head end
+		end)
+	end)
+end
+
+local AntiAFKOn = false
+local AFKConn = nil
+local function SetAntiAFK(on)
+	AntiAFKOn = on
+	if AFKConn then pcall(function() AFKConn:Disconnect() end) AFKConn = nil end
+	if not on then return end
+	pcall(function()
+		local vu = game:GetService("VirtualUser")
+		AFKConn = LP.Idled:Connect(function()
+			if not AntiAFKOn then return end
+			pcall(function()
+				vu:Button2Down(Vector2.new(0, 0), WS.CurrentCamera.CFrame)
+				task.wait(1)
+				vu:Button2Up(Vector2.new(0, 0), WS.CurrentCamera.CFrame)
+			end)
+		end)
+	end)
+end
+
+SafeAdd(TabLocal, "Section", { Title = "视觉" })
+TabLocal:Toggle({
+	Title = "全亮",
+	Desc = "去掉黑夜和阴影",
+	Value = false,
+	Callback = function(state)
+		LightOn = state
+		SetFullbright(state)
+	end,
+})
+TabLocal:Toggle({
+	Title = "夜视",
+	Desc = "绿色夜视画面",
+	Value = false,
+	Callback = function(state)
+		SetNightVision(state)
+	end,
+})
+TabLocal:Toggle({
+	Title = "广角视野",
+	Desc = "拉大 FOV，看得更远",
+	Value = false,
+	Callback = function(state)
+		SetFOV(state)
+	end,
+})
+SafeAdd(TabLocal, "Slider", {
+	Title = "FOV 数值",
+	Desc = "70 - 120",
+	Value = { Min = 70, Max = 120, Default = 120 },
+	Step = 1,
+	Range = { 70, 120 },
+	CurrentValue = 120,
+	Callback = function(val)
+		if type(val) == "number" then
+			FOVVal = val
+			if FOVOn then SetFOV(true) end
+		end
+	end,
+})
+
+SafeAdd(TabLocal, "Section", { Title = "身体" })
+TabLocal:Toggle({
+	Title = "无限体力 / 回血",
+	Value = false,
+	Callback = function(state)
+		SetInfStamina(state)
+	end,
+})
+TabLocal:Toggle({
+	Title = "防摔落伤害",
+	Desc = "限制下落速度",
+	Value = false,
+	Callback = function(state)
+		SetNoFall(state)
+	end,
+})
+TabLocal:Toggle({
+	Title = "防击退",
+	Desc = "清掉外力推挤",
+	Value = false,
+	Callback = function(state)
+		SetAntiKB(state)
+	end,
+})
+TabLocal:Toggle({
+	Title = "自动跳",
+	Desc = "移动时自动起跳",
+	Value = false,
+	Callback = function(state)
+		SetAutoJump(state)
+	end,
+})
+SafeAdd(TabLocal, "Slider", {
+	Title = "角色缩放",
+	Desc = "0.3 倍 ~ 3 倍",
+	Value = { Min = 30, Max = 300, Default = 100 },
+	Step = 5,
+	Range = { 30, 300 },
+	CurrentValue = 100,
+	Callback = function(val)
+		if type(val) == "number" then SetBodyScale(val / 100) end
+	end,
+})
+
+SafeAdd(TabLocal, "Section", { Title = "移动辅助" })
+TabLocal:Toggle({
+	Title = "点击传送",
+	Desc = "点地面直接飞过去",
+	Value = false,
+	Callback = function(state)
+		SetClickTP(state)
+	end,
+})
+TabLocal:Toggle({
+	Title = "第三人称",
+	Value = false,
+	Callback = function(state)
+		SetThird(state)
+	end,
+})
+TabLocal:Toggle({
+	Title = "防挂机踢出",
+	Value = false,
+	Callback = function(state)
+		SetAntiAFK(state)
 	end,
 })
 
@@ -1311,7 +2007,21 @@ local function CamCFrame()
 	return cam.CFrame
 end
 
+local FlyIsLinear = false
+
+local function SetFlyVel(vec)
+	if not FlyBV then return end
+	pcall(function()
+		if FlyIsLinear then
+			FlyBV.VectorVelocity = vec
+		else
+			FlyBV.Velocity = vec
+		end
+	end)
+end
+
 local function KillFlyParts()
+	FlyIsLinear = false
 	if FlyBV then pcall(function() FlyBV:Destroy() end) FlyBV = nil end
 	if FlyBG then pcall(function() FlyBG:Destroy() end) FlyBG = nil end
 end
@@ -1337,19 +2047,29 @@ local function MakeFlyParts()
 	if not r then return nil end
 	local ok = pcall(function()
 		FlyBV = Instance.new("BodyVelocity")
+		FlyBV.Name = "G2R5xFlyVel"
 		FlyBV.MaxForce = Vector3.new(9e5, 9e5, 9e5)
 		FlyBV.Velocity = Vector3.zero
 		FlyBV.P = 1250
 		FlyBV.Parent = r
+		FlyIsLinear = false
 	end)
-	if not ok then
+	if not ok or not FlyBV then
 		FlyBV = nil
 		pcall(function()
+			local att = r:FindFirstChild("RootAttachment")
+			if not att then
+				att = Instance.new("Attachment")
+				att.Name = "G2R5xFlyAtt"
+				att.Parent = r
+			end
 			FlyBV = Instance.new("LinearVelocity")
+			FlyBV.Name = "G2R5xFlyVel"
 			FlyBV.MaxForce = 9e5
 			FlyBV.VectorVelocity = Vector3.zero
-			FlyBV.Attachment0 = r:FindFirstChild("RootAttachment")
+			FlyBV.Attachment0 = att
 			FlyBV.Parent = r
+			FlyIsLinear = true
 		end)
 	end
 	pcall(function()
@@ -1375,15 +2095,16 @@ local function MakeMobileFlyGui()
 		g.IgnoreGuiInset = true
 		g.DisplayOrder = 2147483646
 		g.Parent = parent
-		local function mk(txt, posY, onDown, onUp)
+		local function mkOff(txt, offY, onDown, onUp)
 			local b = Instance.new("TextButton", g)
 			b.Size = UDim2.new(0, 62, 0, 62)
-			b.Position = UDim2.new(1, -76, posY, 0)
+			b.AnchorPoint = Vector2.new(0, 0.5)
+			b.Position = UDim2.new(1, -78, 0.5, offY)
 			b.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
 			b.BackgroundTransparency = 0.25
 			b.Text = txt
 			b.TextColor3 = Color3.fromRGB(255, 255, 255)
-			b.TextSize = 24
+			b.TextSize = 22
 			b.Font = Enum.Font.GothamBold
 			b.Active = true
 			pcall(function()
@@ -1391,17 +2112,12 @@ local function MakeMobileFlyGui()
 				c.CornerRadius = UDim.new(0, 31)
 			end)
 			local function set(v)
-				if onUp then
-					if v then onDown() else onUp() end
-				end
+				if v then onDown() else onUp() end
 			end
 			b.InputBegan:Connect(function(i)
 				if i.UserInputType == Enum.UserInputType.Touch
 					or i.UserInputType == Enum.UserInputType.MouseButton1 then
 					set(true)
-					i.Changed:Connect(function()
-						if i.UserInputState == Enum.UserInputState.End then set(false) end
-					end)
 				end
 			end)
 			b.InputEnded:Connect(function(i)
@@ -1412,8 +2128,8 @@ local function MakeMobileFlyGui()
 			end)
 			return b
 		end
-		mk("UP", 0.42, function() FlyBtnUp = true end, function() FlyBtnUp = false end)
-		mk("DN", 0.49, function() FlyBtnDown = true end, function() FlyBtnDown = false end)
+		mkOff("UP", -72, function() FlyBtnUp = true end, function() FlyBtnUp = false end)
+		mkOff("DN", 8, function() FlyBtnDown = true end, function() FlyBtnDown = false end)
 		FlyGui = g
 	end)
 	return ok
@@ -1450,11 +2166,7 @@ local function FlyTick()
 	end
 	if move.Magnitude > 0.01 then move = move.Unit end
 	move = move + Vector3.new(0, vert, 0)
-	if move.Magnitude > 0.01 then
-		FlyBV.Velocity = move.Unit * FlySpeed
-	else
-		FlyBV.Velocity = Vector3.zero
-	end
+	SetFlyVel(move)
 	if FlyBG then
 		FlyBG.CFrame = CFrame.new(r.Position, r.Position + cf.LookVector)
 	end
@@ -1479,6 +2191,7 @@ end
 
 UIS.InputBegan:Connect(function(input, gpe)
 	if not FlyOn or FlyMobile then return end
+	if gpe then return end
 	if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 	local k = input.KeyCode
 	if k == Enum.KeyCode.Space then FlyKeys.up = true end
