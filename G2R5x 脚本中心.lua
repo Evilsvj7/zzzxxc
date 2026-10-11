@@ -11,6 +11,108 @@ local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
 local HUB_NAME = "G2R5x"
 local HUB_CN = "脚本中心"
+local SV = {}
+	SV.INTRO_STYLE = 1
+	SV.introFn = {}
+	SV.FS = {}
+	SV.PendingConfirm = {}
+	SV.WindUI = nil
+	SV.SpeedMode = 1
+	SV.JumpMode = 1
+	SV.SpeedAuto = true
+	SV.JumpAuto = true
+	SV.SpeedVal = 16
+	SV.JumpVal = 50
+	SV.ModOn = false
+	SV.VelObj = nil
+	SV.applySpeed = {}
+	SV.applyJump = {}
+	SV.JumpConn = nil
+	SV.JumpConn2 = nil
+	SV.IJStateConn = nil
+	SV.IJMode = 1
+	SV.IJLast = 0
+	SV.IJAuto = true
+	SV.IJOn = false
+	SV.IJVal = 50
+	SV.IJConn = nil
+	SV.IJAir = 0
+	SV.IJMax = 0
+	SV.applyIJ = {}
+	SV.NCMode = 1
+	SV.NCAuto = true
+	SV.NCOn = false
+	SV.NCVal = 3
+	SV.NCSaved = {}
+	SV.NCConn = nil
+	SV.NCLastSafe = nil
+	SV.NCLastSafeT = 0
+	SV.applyNC = {}
+	SV.FAIL_NEED = 2
+	SV.MANUAL_PROTECT = 10
+	SV.AutoSt = {}
+	SV.OldLight = nil
+	SV.LightOn = false
+	SV.NVConn = nil
+	SV.FOVOn = false
+	SV.FOVVal = 120
+	SV.FOVConn = nil
+	SV.StamBinds = {}
+	SV.NoFall = false
+	SV.NoFallConn = nil
+	SV.NoFallConn2 = nil
+	SV.AntiKB = false
+	SV.KBConn = nil
+	SV.ClickTP = false
+	SV.TPConn = nil
+	SV.AutoJumpOn = false
+	SV.AJConn = nil
+	SV.ScaleVal = 1
+	SV.ThirdOn = false
+	SV.ThirdConn = nil
+	SV.ThirdSaved = nil
+	SV.AntiAFKOn = false
+	SV.AFKConn = nil
+	SV.AFKTick = nil
+	SV.AFKLast = 0
+	SV.FlyOn = false
+	SV.FlyMobile = false
+	SV.FlySpeed = 120
+	SV.FlyBV = nil
+	SV.FlyBG = nil
+	SV.FlyConn = nil
+	SV.FlyKeys = {}
+	SV.FlyUp = 0
+	SV.FlyGui = nil
+	SV.FlyBtnUp = false
+	SV.FlyBtnDown = false
+	SV.FlyIsLinear = false
+	SV.EspOn = false
+	SV.EspTeam = true
+	SV.EspRay = true
+	SV.EspDist = 500
+	SV.EspColorMode = 0
+	SV.EspGui = nil
+	SV.EspObjs = {}
+	SV.EspConn = nil
+	SV.FunConns = {}
+	SV.RainbowOn = false
+	SV.SpinOn = false
+	SV.HeadOn = false
+	SV.HeadSaved = nil
+	SV.GhostOn = false
+	SV.GhostSaved = nil
+	SV.FloatOn = false
+	SV.DanceOn = false
+	SV.DanceTrack = nil
+	SV.DanceIdx = 1
+	SV.EmoteTrack = nil
+	SV.BounceOn = false
+	SV.RECENT = {}
+	SV.SCALE_MIN = 20
+	SV.SCALE_MAX = 300
+	SV.LastScaleMsg = 0
+	SV.RescueBtn = nil
 
 --------------------------------------------------------------------------------
 -- 开场动画
@@ -119,12 +221,10 @@ local function IntroFadeOut(gui, bg, en, bar, cn, sub)
 	pcall(function() gui:Destroy() end)
 end
 
-local INTRO_STYLE = 1
 local INTRO_NAMES = { "风格一 淡入展开", "风格二 缩放弹入", "风格三 打字机" }
 
-local introFn = {}
 
-introFn[1] = function()
+SV.introFn[1] = function()
 	local gui, bg, en, bar, cn, sub = MkIntroGui()
 	local ti = TweenInfo.new(0.9, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 	TS:Create(en, ti, { TextTransparency = 0 }):Play()
@@ -137,7 +237,7 @@ introFn[1] = function()
 	IntroFadeOut(gui, bg, en, bar, cn, sub)
 end
 
-introFn[2] = function()
+SV.introFn[2] = function()
 	local gui, bg, en, bar, cn, sub = MkIntroGui()
 	en.TextTransparency = 0
 	cn.TextTransparency = 0
@@ -156,7 +256,7 @@ introFn[2] = function()
 	IntroFadeOut(gui, bg, en, bar, cn, sub)
 end
 
-introFn[3] = function()
+SV.introFn[3] = function()
 	local gui, bg, en, bar, cn, sub = MkIntroGui()
 	en.Text = ""
 	cn.Text = ""
@@ -184,19 +284,19 @@ introFn[3] = function()
 end
 
 local function PlayIntro()
-	local fn = introFn[INTRO_STYLE] or introFn[1]
+	local fn = SV.introFn[SV.INTRO_STYLE] or SV.introFn[1]
 	fn()
 end
 
-_G.__G2R5X_INTRO = { list = INTRO_NAMES, get = function() return INTRO_STYLE end,
-	set = function(i) INTRO_STYLE = math.clamp(tonumber(i) or 1, 1, 3) end }
+_G.__G2R5X_INTRO = { list = INTRO_NAMES, get = function() return SV.INTRO_STYLE end,
+	set = function(i) SV.INTRO_STYLE = math.clamp(tonumber(i) or 1, 1, 3) end }
 
 task.spawn(function()
 	task.spawn(function()
 		task.wait(0.2)
 		local c = _G.__G2R5X_CFG
 		if c and c.intro == false then return end
-		if c and c.introStyle then INTRO_STYLE = math.clamp(tonumber(c.introStyle) or 1, 1, 3) end
+		if c and c.introStyle then SV.INTRO_STYLE = math.clamp(tonumber(c.introStyle) or 1, 1, 3) end
 		pcall(PlayIntro)
 	end)
 end)
@@ -239,16 +339,15 @@ end
 --------------------------------------------------------------------------------
 -- 本地存档（换服务器 / 重进后仍然保留）
 --------------------------------------------------------------------------------
-local FS = {}
-FS.ok = false
+SV.FS.ok = false
 pcall(function()
 	if type(writefile) == "function" and type(readfile) == "function" and type(isfile) == "function" then
-		FS.ok = true
+		SV.FS.ok = true
 	end
 end)
 local SAVE_DIR = "G2R5x"
-function FS.Save(name, data)
-	if not FS.ok then return false end
+function SV.FS.Save(name, data)
+	if not SV.FS.ok then return false end
 	local ok = pcall(function()
 		if not isfolder(SAVE_DIR) then pcall(makefolder, SAVE_DIR) end
 		local hs = game:GetService("HttpService")
@@ -256,8 +355,8 @@ function FS.Save(name, data)
 	end)
 	return ok
 end
-function FS.Load(name)
-	if not FS.ok then return nil end
+function SV.FS.Load(name)
+	if not SV.FS.ok then return nil end
 	local out = nil
 	pcall(function()
 		local path = SAVE_DIR .. "/" .. name .. ".json"
@@ -288,14 +387,14 @@ local CFG = {
 	sideBar = true,
 	rescue = true,
 }
-local savedCfg = FS.Load("config")
+local savedCfg = SV.FS.Load("config")
 if type(savedCfg) == "table" then
 	for k, v in pairs(savedCfg) do
 		CFG[k] = v
 	end
 end
 local function SaveCfg()
-	FS.Save("config", {
+	SV.FS.Save("config", {
 		autoRun = CFG.autoRun, autoName = CFG.autoName,
 		theme = CFG.theme, scale = CFG.scale,
 		intro = CFG.intro, introStyle = CFG.introStyle, notifDur = CFG.notifDur,
@@ -353,7 +452,7 @@ local SCRIPT_LIB = {
 	{ name = "圣奥里", cat = "普通脚本", desc = "可能需要翻译因为这是英文", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/idkidevthings/improved-octo-chainsaw/refs/heads/main/sanx.lua"))()]] },
 	{ name = "黑白脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet('https://raw.githubusercontent.com/tfcygvunbind/Apple/main/黑白脚本加载器'))()]] },
 	{ name = "黑白脚本轻量版", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/tfcygvunbind/557/main/黑白脚本轻"))()]] },
-	{ name = "R15无敌少侠", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://obj.wearedevs.net/197198/scripts/invincible%20flight%20animation.lua"))()]] },
+	{ name = "R15无敌少侠", cat = "娱乐", code = [[loadstring(game:HttpGet("https://obj.wearedevs.net/197198/scripts/invincible%20flight%20animation.lua"))()]] },
 	{ name = "寒脚本", cat = "普通脚本", code = [[getgenv().SCRIPT_KEY="ec1ecb11-0158-4854-b588-03f5c4c2ab7b";
 loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/d6c1170046d31cebd08f3d38ad1e462e19c29de580b544c6dd7088c2f1de0160/download"))()]] },
 	{ name = "大司马中心", cat = "脚本中心", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/whenheer/dasimav6/refs/heads/main/dasimaV6.txt"))()]] },
@@ -388,16 +487,15 @@ end
 local PushRecent
 local RefreshRecent
 
-local PendingConfirm = {}
 local function RunScript(entry)
 	if CFG.confirmBeforeRun then
-		if PendingConfirm[entry.name] ~= true then
-			PendingConfirm[entry.name] = true
+		if SV.PendingConfirm[entry.name] ~= true then
+			SV.PendingConfirm[entry.name] = true
 			Notify("G2R5x 脚本中心", "再点一次确认运行", 4)
-			task.delay(5, function() PendingConfirm[entry.name] = nil end)
+			task.delay(5, function() SV.PendingConfirm[entry.name] = nil end)
 			return false
 		end
-		PendingConfirm[entry.name] = nil
+		SV.PendingConfirm[entry.name] = nil
 	end
 	Notify("G2R5x 脚本中心", "正在执行...", 3)
 	local f, err = loadstring(entry.code)
@@ -426,17 +524,16 @@ end
 --------------------------------------------------------------------------------
 -- 加载 UI 库
 --------------------------------------------------------------------------------
-local WindUI = nil
 local uiOk, uiErr = pcall(function()
-	WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+	SV.WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 end)
-if not uiOk or not WindUI then
+if not uiOk or not SV.WindUI then
 	Notify("G2R5x 脚本中心", "UI 库加载失败，功能不可用", 6)
 	warn("[G2R5x] WindUI 加载失败: " .. tostring(uiErr))
 	return
 end
 
-local Window = WindUI:CreateWindow({
+local Window = SV.WindUI:CreateWindow({
 	Title = HUB_NAME .. " " .. HUB_CN,
 	Icon = "blocks",
 	Theme = "Dark",
@@ -494,13 +591,6 @@ local TabLocal = SafeTab({ Title = "本地玩家修改", Icon = "person-standing
 local SPD_MODES = { "方式一 WalkSpeed", "方式二 力度推进", "方式三 坐标位移", "方式四 强力推进", "方式五 速度直写" }
 local JMP_MODES = { "方式一 JumpPower", "方式二 JumpHeight", "方式三 起跳推力", "方式四 脉冲上抛", "方式五 双通道叠加" }
 
-local SpeedMode = 1
-local JumpMode = 1
-local SpeedAuto = true
-local JumpAuto = true
-local SpeedVal = 16
-local JumpVal = 50
-local ModOn = false
 
 local function GetChar()
 	return LP.Character or LP.CharacterAdded:Wait()
@@ -516,11 +606,10 @@ local function GetRoot()
 	return c:FindFirstChild("HumanoidRootPart") or c.PrimaryPart
 end
 
-local VelObj = nil
 local function EnsureVel(root)
-	if VelObj and VelObj.Parent == root then return VelObj end
-	pcall(function() if VelObj then VelObj:Destroy() end end)
-	VelObj = nil
+	if SV.VelObj and SV.VelObj.Parent == root then return SV.VelObj end
+	pcall(function() if SV.VelObj then SV.VelObj:Destroy() end end)
+	SV.VelObj = nil
 	pcall(function()
 		local v = Instance.new("BodyVelocity")
 		v.Name = "G2R5xVel"
@@ -528,43 +617,42 @@ local function EnsureVel(root)
 		v.Velocity = Vector3.new(0, 0, 0)
 		v.P = 1250
 		v.Parent = root
-		VelObj = v
+		SV.VelObj = v
 	end)
-	return VelObj
+	return SV.VelObj
 end
 
-local applySpeed = {}
-applySpeed[1] = function(hum, v)
+SV.applySpeed[1] = function(hum, v)
 	hum.WalkSpeed = v
 end
-applySpeed[2] = function(hum, v)
+SV.applySpeed[2] = function(hum, v)
 	hum.WalkSpeed = v
 	local root = GetRoot()
 	if not root then return end
 	EnsureVel(root)
 	task.spawn(function()
-		while ModOn and SpeedMode == 2 do
+		while SV.ModOn and SV.SpeedMode == 2 do
 			pcall(function()
 				local h = GetHum()
 				local r = GetRoot()
 				if not (h and r) then return end
-				if VelObj and VelObj.Parent == r then
+				if SV.VelObj and SV.VelObj.Parent == r then
 					local mv = h.MoveDirection
-					VelObj.Velocity = mv * v
-					VelObj.MaxForce = Vector3.new(9000, 0, 9000)
+					SV.VelObj.Velocity = mv * v
+					SV.VelObj.MaxForce = Vector3.new(9000, 0, 9000)
 				end
 			end)
 			RS.Heartbeat:Wait()
 		end
 		pcall(function()
-			if VelObj then VelObj.MaxForce = Vector3.new(0, 0, 0) VelObj.Velocity = Vector3.new(0, 0, 0) end
+			if SV.VelObj then SV.VelObj.MaxForce = Vector3.new(0, 0, 0) SV.VelObj.Velocity = Vector3.new(0, 0, 0) end
 		end)
 	end)
 end
-applySpeed[3] = function(hum, v)
+SV.applySpeed[3] = function(hum, v)
 	pcall(function() hum.WalkSpeed = 16 end)
 	task.spawn(function()
-		while ModOn and SpeedMode == 3 do
+		while SV.ModOn and SV.SpeedMode == 3 do
 			pcall(function()
 				local h = GetHum()
 				local r = GetRoot()
@@ -579,40 +667,40 @@ applySpeed[3] = function(hum, v)
 	end)
 end
 
-applySpeed[4] = function(hum, v)
+SV.applySpeed[4] = function(hum, v)
 	pcall(function() hum.WalkSpeed = 16 end)
 	local root = GetRoot()
 	if not root then return end
 	EnsureVel(root)
 	task.spawn(function()
-		while ModOn and SpeedMode == 4 do
+		while SV.ModOn and SV.SpeedMode == 4 do
 			pcall(function()
 				local h = GetHum()
 				local r = GetRoot()
 				if not (h and r) then return end
-				if VelObj and VelObj.Parent == r then
+				if SV.VelObj and SV.VelObj.Parent == r then
 					local mv = h.MoveDirection
 					if mv.Magnitude > 0.01 then
-						VelObj.Velocity = Vector3.new(mv.X * v, 0, mv.Z * v)
-						VelObj.MaxForce = Vector3.new(1e5, 0, 1e5)
+						SV.VelObj.Velocity = Vector3.new(mv.X * v, 0, mv.Z * v)
+						SV.VelObj.MaxForce = Vector3.new(1e5, 0, 1e5)
 					else
-						VelObj.Velocity = Vector3.new(0, 0, 0)
-						VelObj.MaxForce = Vector3.new(1e5, 0, 1e5)
+						SV.VelObj.Velocity = Vector3.new(0, 0, 0)
+						SV.VelObj.MaxForce = Vector3.new(1e5, 0, 1e5)
 					end
 				end
 			end)
 			RS.Heartbeat:Wait()
 		end
 		pcall(function()
-			if VelObj then VelObj.MaxForce = Vector3.new(0, 0, 0) VelObj.Velocity = Vector3.new(0, 0, 0) end
+			if SV.VelObj then SV.VelObj.MaxForce = Vector3.new(0, 0, 0) SV.VelObj.Velocity = Vector3.new(0, 0, 0) end
 		end)
 	end)
 end
 
-applySpeed[5] = function(hum, v)
+SV.applySpeed[5] = function(hum, v)
 	pcall(function() hum.WalkSpeed = v end)
 	task.spawn(function()
-		while ModOn and SpeedMode == 5 do
+		while SV.ModOn and SV.SpeedMode == 5 do
 			pcall(function()
 				local h = GetHum()
 				local r = GetRoot()
@@ -633,22 +721,18 @@ applySpeed[5] = function(hum, v)
 	end)
 end
 
-local applyJump = {}
-local JumpConn = nil
-local JumpConn2 = nil
-local IJStateConn = nil
 
 local function StopJumpLoop()
-	if JumpConn then pcall(function() JumpConn:Disconnect() end) end
-	if JumpConn2 then pcall(function() JumpConn2:Disconnect() end) end
-	JumpConn = nil
-	JumpConn2 = nil
+	if SV.JumpConn then pcall(function() SV.JumpConn:Disconnect() end) end
+	if SV.JumpConn2 then pcall(function() SV.JumpConn2:Disconnect() end) end
+	SV.JumpConn = nil
+	SV.JumpConn2 = nil
 end
 
-applyJump[1] = function(hum, v)
+SV.applyJump[1] = function(hum, v)
 	StopJumpLoop()
-	JumpConn = RS.Stepped:Connect(function()
-		if not ModOn or JumpMode ~= 1 then return end
+	SV.JumpConn = RS.Stepped:Connect(function()
+		if not SV.ModOn or SV.JumpMode ~= 1 then return end
 		pcall(function()
 			local h = GetHum()
 			if not h then return end
@@ -656,8 +740,8 @@ applyJump[1] = function(hum, v)
 			if math.abs((h.JumpPower or 0) - v) > 0.01 then h.JumpPower = v end
 		end)
 	end)
-	JumpConn2 = RS.Heartbeat:Connect(function()
-		if not ModOn or JumpMode ~= 1 then return end
+	SV.JumpConn2 = RS.Heartbeat:Connect(function()
+		if not SV.ModOn or SV.JumpMode ~= 1 then return end
 		pcall(function()
 			local h = GetHum()
 			if not h then return end
@@ -671,11 +755,11 @@ applyJump[1] = function(hum, v)
 	end)
 end
 
-applyJump[2] = function(hum, v)
+SV.applyJump[2] = function(hum, v)
 	StopJumpLoop()
 	local target = v / 7.5
-	JumpConn = RS.Stepped:Connect(function()
-		if not ModOn or JumpMode ~= 2 then return end
+	SV.JumpConn = RS.Stepped:Connect(function()
+		if not SV.ModOn or SV.JumpMode ~= 2 then return end
 		pcall(function()
 			local h = GetHum()
 			if not h then return end
@@ -683,8 +767,8 @@ applyJump[2] = function(hum, v)
 			if math.abs((h.JumpHeight or 0) - target) > 0.01 then h.JumpHeight = target end
 		end)
 	end)
-	JumpConn2 = RS.Heartbeat:Connect(function()
-		if not ModOn or JumpMode ~= 2 then return end
+	SV.JumpConn2 = RS.Heartbeat:Connect(function()
+		if not SV.ModOn or SV.JumpMode ~= 2 then return end
 		pcall(function()
 			local h = GetHum()
 			if not h then return end
@@ -698,10 +782,10 @@ applyJump[2] = function(hum, v)
 	end)
 end
 
-applyJump[3] = function(hum, v)
+SV.applyJump[3] = function(hum, v)
 	StopJumpLoop()
-	JumpConn = UIS.JumpRequest:Connect(function()
-		if not ModOn or JumpMode ~= 3 then return end
+	SV.JumpConn = UIS.JumpRequest:Connect(function()
+		if not SV.ModOn or SV.JumpMode ~= 3 then return end
 		pcall(function()
 			local h = GetHum()
 			local r = GetRoot()
@@ -715,10 +799,10 @@ applyJump[3] = function(hum, v)
 	end)
 end
 
-applyJump[4] = function(hum, v)
+SV.applyJump[4] = function(hum, v)
 	StopJumpLoop()
-	JumpConn = UIS.JumpRequest:Connect(function()
-		if not ModOn or JumpMode ~= 4 then return end
+	SV.JumpConn = UIS.JumpRequest:Connect(function()
+		if not SV.ModOn or SV.JumpMode ~= 4 then return end
 		pcall(function()
 			local h = GetHum()
 			local r = GetRoot()
@@ -737,7 +821,7 @@ applyJump[4] = function(hum, v)
 	end)
 end
 
-applyJump[5] = function(hum, v)
+SV.applyJump[5] = function(hum, v)
 	StopJumpLoop()
 	pcall(function()
 		local h = GetHum()
@@ -746,8 +830,8 @@ applyJump[5] = function(hum, v)
 			h.JumpPower = v
 		end
 	end)
-	JumpConn = RS.Stepped:Connect(function()
-		if not ModOn or JumpMode ~= 5 then return end
+	SV.JumpConn = RS.Stepped:Connect(function()
+		if not SV.ModOn or SV.JumpMode ~= 5 then return end
 		pcall(function()
 			local h = GetHum()
 			if not h then return end
@@ -755,8 +839,8 @@ applyJump[5] = function(hum, v)
 			if math.abs((h.JumpPower or 0) - v) > 0.01 then h.JumpPower = v end
 		end)
 	end)
-	JumpConn2 = UIS.JumpRequest:Connect(function()
-		if not ModOn or JumpMode ~= 5 then return end
+	SV.JumpConn2 = UIS.JumpRequest:Connect(function()
+		if not SV.ModOn or SV.JumpMode ~= 5 then return end
 		pcall(function()
 			local h = GetHum()
 			local r = GetRoot()
@@ -774,13 +858,13 @@ end
 local function DoSpeed()
 	pcall(function()
 		local h = GetHum()
-		if h then applySpeed[SpeedMode](h, SpeedVal) end
+		if h then SV.applySpeed[SV.SpeedMode](h, SV.SpeedVal) end
 	end)
 end
 local function DoJump()
 	pcall(function()
 		local h = GetHum()
-		if h then applyJump[JumpMode](h, JumpVal) end
+		if h then SV.applyJump[SV.JumpMode](h, SV.JumpVal) end
 	end)
 end
 
@@ -798,156 +882,168 @@ local function IsGrounded(h)
 	return false
 end
 local function IJAirCap()
-	return (IJMax > 0) and (IJAir >= IJMax)
+	return (SV.IJMax > 0) and (SV.IJAir >= SV.IJMax)
 end
 local function CountAir()
-	IJAir = IJAir + 1
+	SV.IJAir = SV.IJAir + 1
 end
 
-local IJ_MODES = { "方式一 状态重置", "方式二 冷却计数", "方式三 速度注入", "方式四 复位+注入", "方式五 强跳+注入" }
-local IJMode = 1
-local IJAuto = true
-local IJOn = false
-local IJVal = 50
-local IJConn = nil
+local IJ_MODES = { "方式一 自动连跳", "方式二 空中按键跳", "方式三 冷却计数", "方式四 速度注入", "方式五 强跳注入" }
 local IJCool = 0.12
-local IJAir = 0
-local IJMax = 0
 
 local function BindIJReset()
-	if IJStateConn then pcall(function() IJStateConn:Disconnect() end) end
-	IJStateConn = nil
+	if SV.IJStateConn then pcall(function() SV.IJStateConn:Disconnect() end) end
+	SV.IJStateConn = nil
 	pcall(function()
 		local h = GetHum()
 		if not h then return end
-		IJStateConn = h.StateChanged:Connect(function(_, ns)
-			if ns == Enum.HumanoidStateType.Landed then IJAir = 0 end
+		SV.IJStateConn = h.StateChanged:Connect(function(_, ns)
+			if ns == Enum.HumanoidStateType.Landed then SV.IJAir = 0 end
 		end)
 	end)
 end
 
 local function StopIJ()
-	if IJConn then pcall(function() IJConn:Disconnect() end) end
-	IJConn = nil
-	IJAir = 0
+	if SV.IJConn then pcall(function() SV.IJConn:Disconnect() end) end
+	SV.IJConn = nil
+	SV.IJAir = 0
 end
 
-local applyIJ = {}
 
-applyIJ[1] = function(hum, v)
-	StopIJ()
-	BindIJReset()
-	IJConn = UIS.JumpRequest:Connect(function()
-		if not IJOn or IJMode ~= 1 then return end
-		pcall(function()
-			local h = GetHum()
-			if not h then return end
-			if h:GetState() == Enum.HumanoidStateType.Dead then return end
-			if IJMax > 0 and IJAir >= IJMax and not IsGrounded(h) then return end
-			if not IsGrounded(h) then IJAir = IJAir + 1 end
-			h:ChangeState(Enum.HumanoidStateType.Jumping)
-		end)
+local function IJCanJump()
+	if SV.IJMax <= 0 then return true end
+	return SV.IJAir < SV.IJMax
+end
+
+local function IJDoOnce(injectV)
+	pcall(function()
+		local h = GetHum()
+		local r = GetRoot()
+		if not (h and r) then return end
+		if h:GetState() == Enum.HumanoidStateType.Dead then return end
+		pcall(function() h.PlatformStand = false end)
+		pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
+		if injectV and injectV > 0 then
+			r.AssemblyLinearVelocity = Vector3.new(
+				r.AssemblyLinearVelocity.X, injectV, r.AssemblyLinearVelocity.Z
+			)
+		end
 	end)
 end
 
-applyIJ[2] = function(hum, v)
+local function IJLoop(fn, interval)
 	StopIJ()
 	BindIJReset()
-	IJConn = UIS.JumpRequest:Connect(function()
-		if not IJOn or IJMode ~= 2 then return end
+	local acc = 0
+	SV.IJConn = RS.Heartbeat:Connect(function(dt)
+		if not SV.IJOn then return end
+		acc = acc + dt
+		if acc < (interval or 0.08) then return end
+		acc = 0
+		if not IJCanJump() then
+			SV.IJAir = 0
+			return
+		end
+		fn()
+	end)
+end
+
+SV.applyIJ[1] = function(hum, v)
+	StopIJ()
+	BindIJReset()
+	SV.IJConn = RS.Heartbeat:Connect(function()
+		if not SV.IJOn or SV.IJMode ~= 1 then return end
 		pcall(function()
 			local h = GetHum()
 			if not h then return end
 			if h:GetState() == Enum.HumanoidStateType.Dead then return end
-			if IsGrounded(h) then
-				IJAir = 0
-			else
-				if IJMax > 0 and IJAir >= IJMax then return end
-				IJAir = IJAir + 1
-				h:ChangeState(Enum.HumanoidStateType.Jumping)
-				task.wait(IJCool)
+			if tick() - (SV.IJLast or 0) < 0.25 then return end
+			SV.IJLast = tick()
+			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
+			local r = GetRoot()
+			if r then
+				local cur = r.AssemblyLinearVelocity
+				if cur.Y < v * 0.5 then
+					r.AssemblyLinearVelocity = Vector3.new(cur.X, v, cur.Z)
+				end
 			end
 		end)
 	end)
 end
 
-applyIJ[3] = function(hum, v)
-	StopIJ()
-	BindIJReset()
-	IJConn = UIS.JumpRequest:Connect(function()
-		if not IJOn or IJMode ~= 3 then return end
-		pcall(function()
-			local h = GetHum()
-			local r = GetRoot()
-			if not (h and r) then return end
-			if h:GetState() == Enum.HumanoidStateType.Dead then return end
-			if IJMax > 0 and IJAir >= IJMax and not IsGrounded(h) then return end
-			if not IsGrounded(h) then IJAir = IJAir + 1 end
-			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
-			r.AssemblyLinearVelocity = Vector3.new(
-				r.AssemblyLinearVelocity.X, v, r.AssemblyLinearVelocity.Z
-			)
-		end)
-	end)
-end
 
-applyIJ[4] = function(hum, v)
-	StopIJ()
-	BindIJReset()
-	IJConn = UIS.JumpRequest:Connect(function()
-		if not IJOn or IJMode ~= 4 then return end
-		pcall(function()
-			local h = GetHum()
-			local r = GetRoot()
-			if not (h and r) then return end
-			if h:GetState() == Enum.HumanoidStateType.Dead then return end
-			if IJMax > 0 and IJAir >= IJMax and not IsGrounded(h) then return end
-			if not IsGrounded(h) then IJAir = IJAir + 1 end
+SV.applyIJ[2] = function(hum, v)
+	IJLoop(function()
+		local h = GetHum()
+		if not h then return end
+		if IsGrounded(h) then
+			SV.IJAir = SV.IJAir + 1
 			pcall(function()
-				h:ChangeState(Enum.HumanoidStateType.Jumping)
+				if h.Jump ~= true then h.Jump = true end
 			end)
-			task.wait(0.02)
-			r.AssemblyLinearVelocity = Vector3.new(
-				r.AssemblyLinearVelocity.X, v, r.AssemblyLinearVelocity.Z
-			)
-		end)
-	end)
+		end
+	end, 0.05)
 end
 
-applyIJ[5] = function(hum, v)
+SV.applyIJ[3] = function(hum, v)
+	IJLoop(function()
+		local h = GetHum()
+		if not h then return end
+		if IsGrounded(h) then
+			SV.IJAir = SV.IJAir + 1
+			IJDoOnce(v)
+		end
+	end, 0.06)
+end
+
+SV.applyIJ[4] = function(hum, v)
+	IJLoop(function()
+		local h = GetHum()
+		if not h then return end
+		if IsGrounded(h) then
+			SV.IJAir = SV.IJAir + 1
+			pcall(function() h.Jump = true end)
+			IJDoOnce(v)
+		end
+	end, 0.05)
+end
+
+SV.applyIJ[5] = function(hum, v)
 	StopIJ()
 	BindIJReset()
-	IJConn = UIS.JumpRequest:Connect(function()
-		if not IJOn or IJMode ~= 5 then return end
+	local acc = 0
+	SV.IJConn = RS.Heartbeat:Connect(function(dt)
+		if not SV.IJOn then return end
+		acc = acc + dt
+		if acc < 0.03 then return end
+		acc = 0
+		if not IJCanJump() then SV.IJAir = 0 return end
 		pcall(function()
 			local h = GetHum()
 			local r = GetRoot()
 			if not (h and r) then return end
 			if h:GetState() == Enum.HumanoidStateType.Dead then return end
-			if IJMax > 0 and IJAir >= IJMax and not IsGrounded(h) then return end
-			if not IsGrounded(h) then IJAir = IJAir + 1 end
-			pcall(function() h.PlatformStand = false end)
-			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
-			task.wait(0.02)
-			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
-			r.AssemblyLinearVelocity = Vector3.new(
-				r.AssemblyLinearVelocity.X, v, r.AssemblyLinearVelocity.Z
-			)
+			h.PlatformStand = false
+			h.Jump = true
+			h:ChangeState(Enum.HumanoidStateType.Jumping)
+			if IsGrounded(h) then
+				SV.IJAir = SV.IJAir + 1
+				task.wait(0.01)
+				h:ChangeState(Enum.HumanoidStateType.Jumping)
+				r.AssemblyLinearVelocity = Vector3.new(
+					r.AssemblyLinearVelocity.X, v, r.AssemblyLinearVelocity.Z
+				)
+			end
 		end)
 	end)
 end
+
 
 --------------------------------------------------------------------------------
 -- 穿墙 3 种方式
 --------------------------------------------------------------------------------
 local NC_MODES = { "方式一 逐帧关碰撞", "方式二 碰撞分组", "方式三 RootPart穿透", "方式四 闪现穿透", "方式五 关碰撞+推进" }
-local NCMode = 1
-local NCAuto = true
-local NCOn = false
-local NCVal = 3
-local NCSaved = {}
 local NCGroup = "G2R5xNoClip"
-local NCConn = nil
 
 local function CharParts()
 	local c = LP.Character
@@ -959,8 +1055,6 @@ local function CharParts()
 	return out
 end
 
-local NCLastSafe = nil
-local NCLastSafeT = 0
 
 local function RootPart()
 	local c = LP.Character
@@ -992,8 +1086,8 @@ local function RecordSafe()
 	local r = RootPart()
 	if not r then return end
 	if OverlapCount(r.CFrame) == 0 then
-		NCLastSafe = r.CFrame
-		NCLastSafeT = tick()
+		SV.NCLastSafe = r.CFrame
+		SV.NCLastSafeT = tick()
 	end
 end
 
@@ -1023,9 +1117,9 @@ local function Unstuck()
 	if OverlapCount(r.CFrame) == 0 then return true end
 	local h = nil
 	pcall(function() h = LP.Character:FindFirstChildOfClass("Humanoid") end)
-	if NCLastSafe and (tick() - NCLastSafeT) < 600 then
-		if OverlapCount(NCLastSafe) == 0 then
-			pcall(function() r.CFrame = NCLastSafe + Vector3.new(0, 1, 0) end)
+	if SV.NCLastSafe and (tick() - SV.NCLastSafeT) < 600 then
+		if OverlapCount(SV.NCLastSafe) == 0 then
+			pcall(function() r.CFrame = SV.NCLastSafe + Vector3.new(0, 1, 0) end)
 			if OverlapCount(r.CFrame) == 0 then return true end
 		end
 	end
@@ -1038,16 +1132,16 @@ local function Unstuck()
 end
 
 local function StopNC()
-	NCOn = false
-	if NCConn then pcall(function() NCConn:Disconnect() end) end
-	NCConn = nil
+	SV.NCOn = false
+	if SV.NCConn then pcall(function() SV.NCConn:Disconnect() end) end
+	SV.NCConn = nil
 	local ok = false
 	pcall(function() ok = Unstuck() end)
 	task.wait(0.08)
 	pcall(function()
-		for p, v in pairs(NCSaved) do p.CanCollide = v end
+		for p, v in pairs(SV.NCSaved) do p.CanCollide = v end
 	end)
-	NCSaved = {}
+	SV.NCSaved = {}
 	pcall(function()
 		local ps = game:GetService("PhysicsService")
 		for _, p in ipairs(CharParts()) do
@@ -1060,23 +1154,22 @@ local function StopNC()
 	return ok
 end
 
-local applyNC = {}
 
-applyNC[1] = function()
+SV.applyNC[1] = function()
 	for _, p in ipairs(CharParts()) do
-		if NCSaved[p] == nil then NCSaved[p] = p.CanCollide end
+		if SV.NCSaved[p] == nil then SV.NCSaved[p] = p.CanCollide end
 	end
-	if NCConn then pcall(function() NCConn:Disconnect() end) end
-	NCConn = RS.Stepped:Connect(function()
-		if not NCOn then return end
+	if SV.NCConn then pcall(function() SV.NCConn:Disconnect() end) end
+	SV.NCConn = RS.Stepped:Connect(function()
+		if not SV.NCOn then return end
 		for _, p in ipairs(CharParts()) do
-			if NCSaved[p] == nil then NCSaved[p] = p.CanCollide end
+			if SV.NCSaved[p] == nil then SV.NCSaved[p] = p.CanCollide end
 			if p.CanCollide then p.CanCollide = false end
 		end
 	end)
 end
 
-applyNC[2] = function()
+SV.applyNC[2] = function()
 	pcall(function()
 		local ps = game:GetService("PhysicsService")
 		pcall(function() ps:CreateCollisionGroup(NCGroup) end)
@@ -1085,9 +1178,9 @@ applyNC[2] = function()
 			pcall(function() ps:SetPartCollisionGroup(p, NCGroup) end)
 		end
 	end)
-	if NCConn then pcall(function() NCConn:Disconnect() end) end
-	NCConn = RS.Stepped:Connect(function()
-		if not NCOn then return end
+	if SV.NCConn then pcall(function() SV.NCConn:Disconnect() end) end
+	SV.NCConn = RS.Stepped:Connect(function()
+		if not SV.NCOn then return end
 		pcall(function()
 			local ps = game:GetService("PhysicsService")
 			for _, p in ipairs(CharParts()) do
@@ -1097,16 +1190,16 @@ applyNC[2] = function()
 	end)
 end
 
-applyNC[3] = function()
+SV.applyNC[3] = function()
 	local c = LP.Character
 	if not c then return end
 	local root = c:FindFirstChild("HumanoidRootPart") or c.PrimaryPart
 	if not root then return end
-	if NCSaved[root] == nil then NCSaved[root] = root.CanCollide end
+	if SV.NCSaved[root] == nil then SV.NCSaved[root] = root.CanCollide end
 	root.CanCollide = false
-	if NCConn then pcall(function() NCConn:Disconnect() end) end
-	NCConn = RS.Stepped:Connect(function()
-		if not NCOn then return end
+	if SV.NCConn then pcall(function() SV.NCConn:Disconnect() end) end
+	SV.NCConn = RS.Stepped:Connect(function()
+		if not SV.NCOn then return end
 		pcall(function()
 			local cc = LP.Character
 			if not cc then return end
@@ -1115,22 +1208,22 @@ applyNC[3] = function()
 			if r.CanCollide then r.CanCollide = false end
 			local h = cc:FindFirstChildOfClass("Humanoid")
 			if h and h.MoveDirection.Magnitude > 0.01 then
-				r.CFrame = r.CFrame + (h.MoveDirection.Unit * (NCVal / 60))
+				r.CFrame = r.CFrame + (h.MoveDirection.Unit * (SV.NCVal / 60))
 			end
 		end)
 	end)
 end
 
-applyNC[4] = function()
+SV.applyNC[4] = function()
 	local c = LP.Character
 	if not c then return end
 	local root = c:FindFirstChild("HumanoidRootPart") or c.PrimaryPart
 	if not root then return end
-	if NCSaved[root] == nil then NCSaved[root] = root.CanCollide end
+	if SV.NCSaved[root] == nil then SV.NCSaved[root] = root.CanCollide end
 	root.CanCollide = false
-	if NCConn then pcall(function() NCConn:Disconnect() end) end
-	NCConn = RS.Stepped:Connect(function()
-		if not NCOn then return end
+	if SV.NCConn then pcall(function() SV.NCConn:Disconnect() end) end
+	SV.NCConn = RS.Stepped:Connect(function()
+		if not SV.NCOn then return end
 		pcall(function()
 			local cc = LP.Character
 			if not cc then return end
@@ -1140,32 +1233,32 @@ applyNC[4] = function()
 			local h = cc:FindFirstChildOfClass("Humanoid")
 			if h and h.MoveDirection.Magnitude > 0.01 then
 				pcall(function()
-					r.CFrame = r.CFrame + (h.MoveDirection.Unit * (NCVal / 20))
+					r.CFrame = r.CFrame + (h.MoveDirection.Unit * (SV.NCVal / 20))
 				end)
 			end
 		end)
 	end)
 end
 
-applyNC[5] = function()
+SV.applyNC[5] = function()
 	for _, p in ipairs(CharParts()) do
-		if NCSaved[p] == nil then NCSaved[p] = p.CanCollide end
+		if SV.NCSaved[p] == nil then SV.NCSaved[p] = p.CanCollide end
 	end
-	if NCConn then pcall(function() NCConn:Disconnect() end) end
-	NCConn = RS.Stepped:Connect(function()
-		if not NCOn then return end
+	if SV.NCConn then pcall(function() SV.NCConn:Disconnect() end) end
+	SV.NCConn = RS.Stepped:Connect(function()
+		if not SV.NCOn then return end
 		pcall(function()
 			local cc = LP.Character
 			if not cc then return end
 			local r = cc:FindFirstChild("HumanoidRootPart") or cc.PrimaryPart
 			for _, p in ipairs(CharParts()) do
-				if NCSaved[p] == nil then NCSaved[p] = p.CanCollide end
+				if SV.NCSaved[p] == nil then SV.NCSaved[p] = p.CanCollide end
 				if p.CanCollide then p.CanCollide = false end
 			end
 			if r then
 				local h = cc:FindFirstChildOfClass("Humanoid")
 				if h and h.MoveDirection.Magnitude > 0.01 then
-					r.CFrame = r.CFrame + (h.MoveDirection.Unit * (NCVal / 45))
+					r.CFrame = r.CFrame + (h.MoveDirection.Unit * (SV.NCVal / 45))
 				end
 			end
 		end)
@@ -1175,32 +1268,29 @@ end
 local function DoIJ()
 	pcall(function()
 		local h = GetHum()
-		if h then applyIJ[IJMode](h, IJVal) end
+		if h then SV.applyIJ[SV.IJMode](h, SV.IJVal) end
 	end)
 end
 task.spawn(function()
 	while true do
 		task.wait(0.6)
-		if NCOn then pcall(RecordSafe) end
+		if SV.NCOn then pcall(RecordSafe) end
 	end
 end)
 
 local function DoNC()
 	pcall(function()
-		applyNC[NCMode]()
+		SV.applyNC[SV.NCMode]()
 	end)
 end
 
 local SWITCH_COOL = 3.5
-local FAIL_NEED = 2
-local MANUAL_PROTECT = 10
 
-local AutoSt = {}
 local function StOf(key)
-	if not AutoSt[key] then
-		AutoSt[key] = { lastSwitch = 0, fail = 0, tried = {}, dead = false, manualUntil = 0 }
+	if not SV.AutoSt[key] then
+		SV.AutoSt[key] = { lastSwitch = 0, fail = 0, tried = {}, dead = false, manualUntil = 0 }
 	end
-	return AutoSt[key]
+	return SV.AutoSt[key]
 end
 
 local function MarkManual(key)
@@ -1208,7 +1298,7 @@ local function MarkManual(key)
 	st.tried = {}
 	st.fail = 0
 	st.dead = false
-	st.manualUntil = tick() + MANUAL_PROTECT
+	st.manualUntil = tick() + SV.MANUAL_PROTECT
 end
 
 local SpeedProbe = { pos = nil, t = 0 }
@@ -1237,13 +1327,13 @@ local function TestSpeed(mode)
 		local ws = nil
 		pcall(function() ws = h.WalkSpeed end)
 		if ws == nil then return false end
-		if math.abs(ws - SpeedVal) > 1.5 then return false end
+		if math.abs(ws - SV.SpeedVal) > 1.5 then return false end
 		if mode == 1 then return true end
 	end
 	if h.MoveDirection.Magnitude < 0.01 then return true end
 	local v = MeasureFlat()
 	if v == nil then return true end
-	return v >= (SpeedVal * 0.3)
+	return v >= (SV.SpeedVal * 0.3)
 end
 
 local function TestJump(mode)
@@ -1255,7 +1345,7 @@ local function TestJump(mode)
 	pcall(function() ujp = h.UseJumpPower end)
 	if mode == 1 or mode == 5 then
 		if jp == nil or ujp ~= true then return false end
-		if math.abs(jp - JumpVal) > 1.5 then return false end
+		if math.abs(jp - SV.JumpVal) > 1.5 then return false end
 		return true
 	end
 	if mode == 2 then
@@ -1289,7 +1379,7 @@ local function TryAdvance(key, modeVar, setter, total, tester, label)
 	if (tick() - st.lastSwitch) < SWITCH_COOL then return end
 	if not tester(modeVar()) then
 		st.fail = st.fail + 1
-		if st.fail < FAIL_NEED then return end
+		if st.fail < SV.FAIL_NEED then return end
 		st.fail = 0
 		st.tried[modeVar()] = true
 		local next = nil
@@ -1314,19 +1404,19 @@ end
 
 local function AutoWatch()
 	task.spawn(function()
-		while ModOn do
+		while SV.ModOn do
 			pcall(function()
-				if SpeedAuto then
+				if SV.SpeedAuto then
 					local changed = TryAdvance("speed",
-						function() return SpeedMode end,
-						function(v) SpeedMode = v DoSpeed() end,
+						function() return SV.SpeedMode end,
+						function(v) SV.SpeedMode = v DoSpeed() end,
 						5, TestSpeed, "速度")
 					if changed then return end
 				end
-				if JumpAuto then
+				if SV.JumpAuto then
 					TryAdvance("jump",
-						function() return JumpMode end,
-						function(v) JumpMode = v DoJump() end,
+						function() return SV.JumpMode end,
+						function(v) SV.JumpMode = v DoJump() end,
 						5, TestJump, "跳跃")
 				end
 			end)
@@ -1337,12 +1427,12 @@ end
 
 local function IJWatch()
 	task.spawn(function()
-		while IJOn do
+		while SV.IJOn do
 			pcall(function()
-				if IJAuto then
+				if SV.IJAuto then
 					TryAdvance("ij",
-						function() return IJMode end,
-						function(v) IJMode = v DoIJ() end,
+						function() return SV.IJMode end,
+						function(v) SV.IJMode = v DoIJ() end,
 						5, TestIJ, "无限跳")
 				end
 			end)
@@ -1353,12 +1443,12 @@ end
 
 local function NCWatch()
 	task.spawn(function()
-		while NCOn do
+		while SV.NCOn do
 			pcall(function()
-				if NCAuto then
+				if SV.NCAuto then
 					TryAdvance("nc",
-						function() return NCMode end,
-						function(v) NCMode = v DoNC() end,
+						function() return SV.NCMode end,
+						function(v) SV.NCMode = v DoNC() end,
 						5, TestNC, "穿墙")
 				end
 			end)
@@ -1371,7 +1461,7 @@ TabLocal:Toggle({
 	Title = "启用本地修改",
 	Value = false,
 	Callback = function(state)
-		ModOn = state
+		SV.ModOn = state
 		if state then
 			DoSpeed()
 			DoJump()
@@ -1382,7 +1472,7 @@ TabLocal:Toggle({
 			pcall(function()
 				local h = GetHum()
 				if h then h.WalkSpeed = 16 h.JumpPower = 50 h.UseJumpPower = true end
-				if VelObj then VelObj:Destroy() VelObj = nil end
+				if SV.VelObj then SV.VelObj:Destroy() SV.VelObj = nil end
 			end)
 			Notify("本地修改", "已关闭", 3)
 		end
@@ -1398,8 +1488,8 @@ SafeAdd(TabLocal, "Slider", {
 	CurrentValue = 16,
 	Callback = function(val)
 		if type(val) == "number" then
-			SpeedVal = val
-			if ModOn then DoSpeed() end
+			SV.SpeedVal = val
+			if SV.ModOn then DoSpeed() end
 		end
 	end,
 })
@@ -1417,10 +1507,10 @@ SafeAdd(TabLocal, "Dropdown", {
 		local pick = op
 		if type(op) == "table" then pick = op[1] or op.Value end
 		for i, v in ipairs(SPD_MODES) do
-			if v == pick then SpeedMode = i end
+			if v == pick then SV.SpeedMode = i end
 		end
 		MarkManual("speed")
-		if ModOn then DoSpeed() end
+		if SV.ModOn then DoSpeed() end
 		MarkManual("speed")
 	end,
 })
@@ -1429,7 +1519,7 @@ TabLocal:Toggle({
 	Title = "速度方式自动切换",
 	Value = true,
 	Callback = function(state)
-		SpeedAuto = state
+		SV.SpeedAuto = state
 	end,
 })
 
@@ -1442,8 +1532,8 @@ SafeAdd(TabLocal, "Slider", {
 	CurrentValue = 50,
 	Callback = function(val)
 		if type(val) == "number" then
-			JumpVal = val
-			if ModOn then DoJump() end
+			SV.JumpVal = val
+			if SV.ModOn then DoJump() end
 		end
 	end,
 })
@@ -1461,10 +1551,10 @@ SafeAdd(TabLocal, "Dropdown", {
 		local pick = op
 		if type(op) == "table" then pick = op[1] or op.Value end
 		for i, v in ipairs(JMP_MODES) do
-			if v == pick then JumpMode = i end
+			if v == pick then SV.JumpMode = i end
 		end
 		MarkManual("jump")
-		if ModOn then DoJump() end
+		if SV.ModOn then DoJump() end
 	end,
 })
 
@@ -1472,7 +1562,7 @@ TabLocal:Toggle({
 	Title = "跳跃方式自动切换",
 	Value = true,
 	Callback = function(state)
-		JumpAuto = state
+		SV.JumpAuto = state
 	end,
 })
 
@@ -1481,7 +1571,7 @@ TabLocal:Toggle({
 	Title = "启用无限跳跃",
 	Value = false,
 	Callback = function(state)
-		IJOn = state
+		SV.IJOn = state
 		if state then
 			MarkManual("ij")
 			DoIJ()
@@ -1504,8 +1594,8 @@ SafeAdd(TabLocal, "Slider", {
 	CurrentValue = 50,
 	Callback = function(val)
 		if type(val) == "number" then
-			IJVal = val
-			if IJOn then DoIJ() end
+			SV.IJVal = val
+			if SV.IJOn then DoIJ() end
 		end
 	end,
 })
@@ -1517,7 +1607,7 @@ SafeAdd(TabLocal, "Slider", {
 	Range = { 0, 20 },
 	CurrentValue = 0,
 	Callback = function(val)
-		if type(val) == "number" then IJMax = val end
+		if type(val) == "number" then SV.IJMax = val end
 	end,
 })
 SafeAdd(TabLocal, "Dropdown", {
@@ -1533,17 +1623,17 @@ SafeAdd(TabLocal, "Dropdown", {
 		local pick = op
 		if type(op) == "table" then pick = op[1] or op.Value end
 		for i, v in ipairs(IJ_MODES) do
-			if v == pick then IJMode = i end
+			if v == pick then SV.IJMode = i end
 		end
 		MarkManual("ij")
-		if IJOn then DoIJ() end
+		if SV.IJOn then DoIJ() end
 	end,
 })
 TabLocal:Toggle({
 	Title = "无限跳跃方式自动切换",
 	Value = true,
 	Callback = function(state)
-		IJAuto = state
+		SV.IJAuto = state
 	end,
 })
 
@@ -1553,8 +1643,8 @@ TabLocal:Toggle({
 	Value = false,
 	Callback = function(state)
 		if state then
-			NCOn = true
-			NCLastSafe = nil
+			SV.NCOn = true
+			SV.NCLastSafe = nil
 			RecordSafe()
 			MarkManual("nc")
 			DoNC()
@@ -1574,7 +1664,7 @@ SafeAdd(TabLocal, "Slider", {
 	Range = { 1, 12 },
 	CurrentValue = 3,
 	Callback = function(val)
-		if type(val) == "number" then NCVal = val end
+		if type(val) == "number" then SV.NCVal = val end
 	end,
 })
 SafeAdd(TabLocal, "Button", {
@@ -1604,50 +1694,47 @@ SafeAdd(TabLocal, "Dropdown", {
 		local pick = op
 		if type(op) == "table" then pick = op[1] or op.Value end
 		for i, v in ipairs(NC_MODES) do
-			if v == pick then NCMode = i end
+			if v == pick then SV.NCMode = i end
 		end
 		MarkManual("nc")
-		if NCOn then DoNC() end
+		if SV.NCOn then DoNC() end
 	end,
 })
 TabLocal:Toggle({
 	Title = "穿墙方式自动切换",
 	Value = true,
 	Callback = function(state)
-		NCAuto = state
+		SV.NCAuto = state
 	end,
 })
 
 --------------------------------------------------------------------------------
 -- 视觉 / 身体 增强
 --------------------------------------------------------------------------------
-local OldLight = nil
-local LightOn = false
 
 local function SetFullbright(on)
 	pcall(function()
 		local l = game:GetService("Lighting")
 		if on then
-			OldLight = { l.Ambient, l.Brightness, l.OutdoorAmbient, l.GlobalShadows, l.FogEnd }
+			SV.OldLight = { l.Ambient, l.Brightness, l.OutdoorAmbient, l.GlobalShadows, l.FogEnd }
 			l.Ambient = Color3.fromRGB(255, 255, 255)
 			l.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
 			l.Brightness = 3
 			l.GlobalShadows = false
 			l.FogEnd = 1e6
-		elseif OldLight then
-			l.Ambient = OldLight[1]
-			l.Brightness = OldLight[2]
-			l.OutdoorAmbient = OldLight[3]
-			l.GlobalShadows = OldLight[4]
-			l.FogEnd = OldLight[5]
-			OldLight = nil
+		elseif SV.OldLight then
+			l.Ambient = SV.OldLight[1]
+			l.Brightness = SV.OldLight[2]
+			l.OutdoorAmbient = SV.OldLight[3]
+			l.GlobalShadows = SV.OldLight[4]
+			l.FogEnd = SV.OldLight[5]
+			SV.OldLight = nil
 		end
 	end)
 end
 
-local NVConn = nil
 local function SetNightVision(on)
-	if NVConn then pcall(function() NVConn:Disconnect() end) NVConn = nil end
+	if SV.NVConn then pcall(function() SV.NVConn:Disconnect() end) SV.NVConn = nil end
 	if not on then
 		pcall(function()
 			local l = game:GetService("Lighting")
@@ -1669,14 +1756,93 @@ local function SetNightVision(on)
 	end)
 end
 
-local FOVOn = false
-local FOVVal = 120
 local function SetFOV(on)
-	FOVOn = on
-	pcall(function()
-		local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
-		if cam then cam.FieldOfView = on and FOVVal or 70 end
+	SV.FOVOn = on
+	if SV.FOVConn then pcall(function() SV.FOVConn:Disconnect() end) SV.FOVConn = nil end
+	if not on then
+		pcall(function()
+			local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
+			if cam then cam.FieldOfView = 70 end
+		end)
+		return
+	end
+	SV.FOVConn = RS.Heartbeat:Connect(function()
+		if not SV.FOVOn then return end
+		pcall(function()
+			local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
+			if cam and math.abs(cam.FieldOfView - SV.FOVVal) > 0.5 then
+				cam.FieldOfView = SV.FOVVal
+			end
+		end)
 	end)
+end
+
+local InfStam = false
+local StamConn = nil
+
+local STAM_KEYS = { "stam", "stamina", "energy", "breath", "oxygen", "sp", "mp", "体力", "耐力", "气" }
+
+local function IsStamName(n)
+	local low = string.lower(n or "")
+	for _, k in ipairs(STAM_KEYS) do
+		if string.find(low, k, 1, true) then return true end
+	end
+	return false
+end
+
+local function FindMaxFor(obj)
+	local parent = obj.Parent
+	if not parent then return nil end
+	local base = obj.Name
+	local cands = { base .. "Max", "Max" .. base, base .. "MaxValue", "Max" .. base .. "Value" }
+	for _, cn in ipairs(cands) do
+		local f = parent:FindFirstChild(cn)
+		if f and (f:IsA("NumberValue") or f:IsA("IntValue")) then return f.Value end
+	end
+	local num = nil
+	pcall(function() num = obj:FindFirstChild("MaxValue") end)
+	if num and (num:IsA("NumberValue") or num:IsA("IntValue")) then return num.Value end
+	return nil
+end
+
+local function FillOne(v)
+	pcall(function()
+		if not (v:IsA("NumberValue") or v:IsA("IntValue") or v:IsA("DoubleConstrainedValue")) then return end
+		if not IsStamName(v.Name) then return end
+		local mx = FindMaxFor(v)
+		local target = mx
+		if target == nil then target = 100 end
+		if v.Value ~= target then v.Value = target end
+	end)
+end
+
+local function ScanStamina()
+	local c = LP.Character
+	if not c then return end
+	for _, d in ipairs(c:GetDescendants()) do
+		if d:IsA("NumberValue") or d:IsA("IntValue") or d:IsA("DoubleConstrainedValue") then
+			if IsStamName(d.Name) then
+				FillOne(d)
+				if not SV.StamBinds[d] then
+					SV.StamBinds[d] = true
+					pcall(function()
+						d.Changed:Connect(function()
+							if InfStam then FillOne(d) end
+						end)
+					end)
+				end
+			end
+		end
+	end
+end
+
+local StamNames = { "stamina", "stam", "energy", "mana", "体力", "耐力", "能量" }
+local function IsStamObj(d)
+	local n = string.lower(d.Name)
+	for _, k in ipairs(StamNames) do
+		if string.find(n, k) then return true end
+	end
+	return false
 end
 
 local InfStam = false
@@ -1692,50 +1858,74 @@ local function SetInfStamina(on)
 			if not c then return end
 			for _, d in ipairs(c:GetDescendants()) do
 				if d:IsA("NumberValue") or d:IsA("IntValue") or d:IsA("DoubleConstrainedValue") then
-					local n = d.Name:lower()
-					if n:find("stam") or n:find("energy") or n:find("stamina") or n == "体力" then
-						pcall(function() d.Value = d.Value end)
+					if IsStamObj(d) then
+						pcall(function()
+							local mx = d:FindFirstChild("MaxValue")
+							if mx and type(mx.Value) == "number" then
+								d.Value = mx.Value
+							else
+								d.Value = 100
+							end
+						end)
 					end
 				end
 			end
-			local h = c:FindFirstChildOfClass("Humanoid")
-			if h then
-				pcall(function()
-					if h.Health < h.MaxHealth and h.MaxHealth > 0 then h.Health = h.MaxHealth end
-				end)
-			end
 		end)
+	end)
+	task.spawn(function()
+		while InfStam do
+			pcall(function()
+				local h = GetHum()
+				if h then
+					pcall(function() h:SetAttribute("Stamina", 100) end)
+					pcall(function() h:SetAttribute("Energy", 100) end)
+				end
+			end)
+			task.wait(0.5)
+		end
 	end)
 end
 
-local NoFall = false
-local NoFallConn = nil
+
+
+local function GroundDist(r)
+	local ok, res = pcall(function()
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Blacklist
+		params.FilterDescendantsInstances = { LP.Character }
+		local rr = WS:Raycast(r.Position, Vector3.new(0, -500, 0), params)
+		if rr then return rr.Distance end
+		return nil
+	end)
+	if ok and res then return res end
+	return nil
+end
+
 local function SetNoFall(on)
-	NoFall = on
-	if NoFallConn then pcall(function() NoFallConn:Disconnect() end) NoFallConn = nil end
+	SV.NoFall = on
+	if SV.NoFallConn then pcall(function() SV.NoFallConn:Disconnect() end) SV.NoFallConn = nil end
 	if not on then return end
-	NoFallConn = RS.Heartbeat:Connect(function()
-		if not NoFall then return end
+	SV.NoFallConn = RS.Heartbeat:Connect(function()
+		if not SV.NoFall then return end
 		pcall(function()
 			local h = GetHum()
 			local r = GetRoot()
 			if not (h and r) then return end
 			local v = r.AssemblyLinearVelocity
-			if v.Y < -90 then
-				r.AssemblyLinearVelocity = Vector3.new(v.X, -90, v.Z)
-			end
+			if v.Y > -60 then return end
+			local st = h:GetState()
+			if st == Enum.HumanoidStateType.Jumping then return end
+			r.AssemblyLinearVelocity = Vector3.new(v.X, -60, v.Z)
 		end)
 	end)
 end
 
-local AntiKB = false
-local KBConn = nil
 local function SetAntiKB(on)
-	AntiKB = on
-	if KBConn then pcall(function() KBConn:Disconnect() end) KBConn = nil end
+	SV.AntiKB = on
+	if SV.KBConn then pcall(function() SV.KBConn:Disconnect() end) SV.KBConn = nil end
 	if not on then return end
-	KBConn = RS.Stepped:Connect(function()
-		if not AntiKB then return end
+	SV.KBConn = RS.Stepped:Connect(function()
+		if not SV.AntiKB then return end
 		pcall(function()
 			local h = GetHum()
 			if h then h.PlatformStand = false end
@@ -1752,15 +1942,13 @@ local function SetAntiKB(on)
 	end)
 end
 
-local ClickTP = false
-local TPConn = nil
 local function SetClickTP(on)
-	ClickTP = on
-	if TPConn then pcall(function() TPConn:Disconnect() end) TPConn = nil end
+	SV.ClickTP = on
+	if SV.TPConn then pcall(function() SV.TPConn:Disconnect() end) SV.TPConn = nil end
 	if not on then return end
 	local mouse = LP:GetMouse()
-	TPConn = mouse.Button1Down:Connect(function()
-		if not ClickTP then return end
+	SV.TPConn = mouse.Button1Down:Connect(function()
+		if not SV.ClickTP then return end
 		pcall(function()
 			local c = LP.Character
 			if not c then return end
@@ -1773,14 +1961,12 @@ local function SetClickTP(on)
 	end)
 end
 
-local AutoJumpOn = false
-local AJConn = nil
 local function SetAutoJump(on)
-	AutoJumpOn = on
-	if AJConn then pcall(function() AJConn:Disconnect() end) AJConn = nil end
+	SV.AutoJumpOn = on
+	if SV.AJConn then pcall(function() SV.AJConn:Disconnect() end) SV.AJConn = nil end
 	if not on then return end
-	AJConn = RS.Heartbeat:Connect(function()
-		if not AutoJumpOn then return end
+	SV.AJConn = RS.Heartbeat:Connect(function()
+		if not SV.AutoJumpOn then return end
 		pcall(function()
 			local h = GetHum()
 			if h and h.MoveDirection.Magnitude > 0.01 then
@@ -1793,7 +1979,6 @@ local function SetAutoJump(on)
 	end)
 end
 
-local ScaleVal = 1
 local function EnsureScale(h)
 	local names = { "BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale" }
 	for _, n in ipairs(names) do
@@ -1809,7 +1994,7 @@ local function EnsureScale(h)
 end
 
 local function SetBodyScale(v)
-	ScaleVal = v
+	SV.ScaleVal = v
 	pcall(function()
 		local h = GetHum()
 		if not h then return end
@@ -1823,53 +2008,67 @@ local function SetBodyScale(v)
 	end)
 end
 
-local ThirdOn = false
-local ThirdConn = nil
 local function SetThird(on)
-	ThirdOn = on
-	if ThirdConn then pcall(function() ThirdConn:Disconnect() end) ThirdConn = nil end
-	pcall(function()
-		local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
-		if cam then cam.CameraSubject = nil end
-	end)
+	SV.ThirdOn = on
+	if SV.ThirdConn then pcall(function() SV.ThirdConn:Disconnect() end) SV.ThirdConn = nil end
 	if not on then
 		pcall(function()
+			if SV.ThirdSaved then
+				LP.CameraMaxZoomDistance = SV.ThirdSaved[1]
+				LP.CameraMinZoomDistance = SV.ThirdSaved[2]
+				LP.CameraMode = SV.ThirdSaved[3]
+				SV.ThirdSaved = nil
+			end
 			local h = GetHum()
 			local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
 			if h and cam then cam.CameraSubject = h end
 		end)
 		return
 	end
+	if not SV.ThirdSaved then
+		SV.ThirdSaved = { LP.CameraMaxZoomDistance, LP.CameraMinZoomDistance, LP.CameraMode }
+	end
 	pcall(function()
+		LP.CameraMode = Enum.CameraMode.Classic
 		LP.CameraMaxZoomDistance = 25
+		LP.CameraMinZoomDistance = 25
 	end)
-	ThirdConn = RS.Heartbeat:Connect(function()
-		if not ThirdOn then return end
+	SV.ThirdConn = RS.Heartbeat:Connect(function()
+		if not SV.ThirdOn then return end
 		pcall(function()
-			local c = LP.Character
 			local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
-			if not (c and cam) then return end
-			local head = c:FindFirstChild("Head")
-			if head then cam.CameraSubject = head end
+			if not cam then return end
+			local c = LP.Character
+			if not c then return end
+			local h = c:FindFirstChildOfClass("Humanoid")
+			if h and cam.CameraSubject ~= h then cam.CameraSubject = h end
+			if cam.CameraType ~= Enum.CameraType.Custom then
+				cam.CameraType = Enum.CameraType.Custom
+			end
+			if LP.CameraMaxZoomDistance < 20 then LP.CameraMaxZoomDistance = 25 end
+			if LP.CameraMinZoomDistance < 20 then LP.CameraMinZoomDistance = 25 end
 		end)
 	end)
 end
 
-local AntiAFKOn = false
-local AFKConn = nil
+
 local function SetAntiAFK(on)
-	AntiAFKOn = on
-	if AFKConn then pcall(function() AFKConn:Disconnect() end) AFKConn = nil end
+	SV.AntiAFKOn = on
+	if SV.AFKConn then pcall(function() SV.AFKConn:Disconnect() end) SV.AFKConn = nil end
 	if not on then return end
-	pcall(function()
-		local vu = game:GetService("VirtualUser")
-		AFKConn = LP.Idled:Connect(function()
-			if not AntiAFKOn then return end
-			pcall(function()
-				vu:Button2Down(Vector2.new(0, 0), WS.CurrentCamera.CFrame)
-				task.wait(1)
-				vu:Button2Up(Vector2.new(0, 0), WS.CurrentCamera.CFrame)
-			end)
+	SV.AFKLast = tick()
+	SV.AFKConn = RS.Heartbeat:Connect(function()
+		if not SV.AntiAFKOn then return end
+		if (tick() - SV.AFKLast) < 55 then return end
+		SV.AFKLast = tick()
+		pcall(function()
+			local h = GetHum()
+			local r = GetRoot()
+			if not (h and r) then return end
+			h:Move(Vector3.new(math.random(-10, 10) / 10, 0, math.random(-10, 10) / 10), false)
+			task.wait(0.25)
+			h:Move(Vector3.new(0, 0, 0), false)
+			h.Jump = true
 		end)
 	end)
 end
@@ -1880,7 +2079,7 @@ TabLocal:Toggle({
 	Desc = "去掉黑夜和阴影",
 	Value = false,
 	Callback = function(state)
-		LightOn = state
+		SV.LightOn = state
 		SetFullbright(state)
 	end,
 })
@@ -1909,15 +2108,39 @@ SafeAdd(TabLocal, "Slider", {
 	CurrentValue = 120,
 	Callback = function(val)
 		if type(val) == "number" then
-			FOVVal = val
-			if FOVOn then SetFOV(true) end
+			SV.FOVVal = val
+			if SV.FOVOn then SetFOV(true) end
 		end
+	end,
+})
+
+local function SetInfHealth(on)
+	SV.InfHealth = on
+	if SV.HealConn then pcall(function() SV.HealConn:Disconnect() end) SV.HealConn = nil end
+	if not on then return end
+	SV.HealConn = RS.Heartbeat:Connect(function()
+		if not SV.InfHealth then return end
+		pcall(function()
+			local h = GetHum()
+			if h and h.MaxHealth > 0 and h.Health < h.MaxHealth then
+				h.Health = h.MaxHealth
+			end
+		end)
+	end)
+end
+
+TabLocal:Toggle({
+	Title = "无限血量",
+	Value = false,
+	Callback = function(state)
+		SetInfHealth(state)
 	end,
 })
 
 SafeAdd(TabLocal, "Section", { Title = "身体" })
 TabLocal:Toggle({
-	Title = "无限体力 / 回血",
+	Title = "无限体力",
+	Desc = "只补体力，不动血量",
 	Value = false,
 	Callback = function(state)
 		SetInfStamina(state)
@@ -1986,17 +2209,6 @@ TabLocal:Toggle({
 --------------------------------------------------------------------------------
 -- 飞行
 --------------------------------------------------------------------------------
-local FlyOn = false
-local FlyMobile = false
-local FlySpeed = 60
-local FlyBV = nil
-local FlyBG = nil
-local FlyConn = nil
-local FlyKeys = {}
-local FlyUp = 0
-local FlyGui = nil
-local FlyBtnUp = false
-local FlyBtnDown = false
 
 local function CamCFrame()
 	local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
@@ -2007,34 +2219,33 @@ local function CamCFrame()
 	return cam.CFrame
 end
 
-local FlyIsLinear = false
 
 local function SetFlyVel(vec)
-	if not FlyBV then return end
+	if not SV.FlyBV then return end
 	pcall(function()
-		if FlyIsLinear then
-			FlyBV.VectorVelocity = vec
+		if SV.FlyIsLinear then
+			SV.FlyBV.VectorVelocity = vec
 		else
-			FlyBV.Velocity = vec
+			SV.FlyBV.Velocity = vec
 		end
 	end)
 end
 
 local function KillFlyParts()
-	FlyIsLinear = false
-	if FlyBV then pcall(function() FlyBV:Destroy() end) FlyBV = nil end
-	if FlyBG then pcall(function() FlyBG:Destroy() end) FlyBG = nil end
+	SV.FlyIsLinear = false
+	if SV.FlyBV then pcall(function() SV.FlyBV:Destroy() end) SV.FlyBV = nil end
+	if SV.FlyBG then pcall(function() SV.FlyBG:Destroy() end) SV.FlyBG = nil end
 end
 
 local function StopFly()
-	FlyOn = false
-	if FlyConn then pcall(function() FlyConn:Disconnect() end) FlyConn = nil end
-	FlyKeys = {}
-	FlyUp = 0
-	FlyBtnUp = false
-	FlyBtnDown = false
+	SV.FlyOn = false
+	if SV.FlyConn then pcall(function() SV.FlyConn:Disconnect() end) SV.FlyConn = nil end
+	SV.FlyKeys = {}
+	SV.FlyUp = 0
+	SV.FlyBtnUp = false
+	SV.FlyBtnDown = false
 	KillFlyParts()
-	if FlyGui then pcall(function() FlyGui:Destroy() end) FlyGui = nil end
+	if SV.FlyGui then pcall(function() SV.FlyGui:Destroy() end) SV.FlyGui = nil end
 	pcall(function()
 		local h = GetHum()
 		if h then h.PlatformStand = false end
@@ -2046,16 +2257,16 @@ local function MakeFlyParts()
 	local r = GetRoot()
 	if not r then return nil end
 	local ok = pcall(function()
-		FlyBV = Instance.new("BodyVelocity")
-		FlyBV.Name = "G2R5xFlyVel"
-		FlyBV.MaxForce = Vector3.new(9e5, 9e5, 9e5)
-		FlyBV.Velocity = Vector3.zero
-		FlyBV.P = 1250
-		FlyBV.Parent = r
-		FlyIsLinear = false
+		SV.FlyBV = Instance.new("BodyVelocity")
+		SV.FlyBV.Name = "G2R5xFlyVel"
+		SV.FlyBV.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+		SV.FlyBV.Velocity = Vector3.zero
+		SV.FlyBV.P = 1250
+		SV.FlyBV.Parent = r
+		SV.FlyIsLinear = false
 	end)
-	if not ok or not FlyBV then
-		FlyBV = nil
+	if not ok or not SV.FlyBV then
+		SV.FlyBV = nil
 		pcall(function()
 			local att = r:FindFirstChild("RootAttachment")
 			if not att then
@@ -2063,27 +2274,27 @@ local function MakeFlyParts()
 				att.Name = "G2R5xFlyAtt"
 				att.Parent = r
 			end
-			FlyBV = Instance.new("LinearVelocity")
-			FlyBV.Name = "G2R5xFlyVel"
-			FlyBV.MaxForce = 9e5
-			FlyBV.VectorVelocity = Vector3.zero
-			FlyBV.Attachment0 = att
-			FlyBV.Parent = r
-			FlyIsLinear = true
+			SV.FlyBV = Instance.new("LinearVelocity")
+			SV.FlyBV.Name = "G2R5xFlyVel"
+			SV.FlyBV.MaxForce = 1e6
+			SV.FlyBV.VectorVelocity = Vector3.zero
+			SV.FlyBV.Attachment0 = att
+			SV.FlyBV.Parent = r
+			SV.FlyIsLinear = true
 		end)
 	end
 	pcall(function()
-		FlyBG = Instance.new("BodyGyro")
-		FlyBG.MaxTorque = Vector3.new(9e5, 9e5, 9e5)
-		FlyBG.P = 9e4
-		FlyBG.CFrame = r.CFrame
-		FlyBG.Parent = r
+		SV.FlyBG = Instance.new("BodyGyro")
+		SV.FlyBG.MaxTorque = Vector3.new(9e5, 9e5, 9e5)
+		SV.FlyBG.P = 9e4
+		SV.FlyBG.CFrame = r.CFrame
+		SV.FlyBG.Parent = r
 	end)
-	return FlyBV
+	return SV.FlyBV
 end
 
 local function MakeMobileFlyGui()
-	if FlyGui then pcall(function() FlyGui:Destroy() end) FlyGui = nil end
+	if SV.FlyGui then pcall(function() SV.FlyGui:Destroy() end) SV.FlyGui = nil end
 	local ok = pcall(function()
 		local parent = nil
 		if gethui then pcall(function() parent = gethui() end) end
@@ -2128,9 +2339,9 @@ local function MakeMobileFlyGui()
 			end)
 			return b
 		end
-		mkOff("UP", -72, function() FlyBtnUp = true end, function() FlyBtnUp = false end)
-		mkOff("DN", 8, function() FlyBtnDown = true end, function() FlyBtnDown = false end)
-		FlyGui = g
+		mkOff("UP", -72, function() SV.FlyBtnUp = true end, function() SV.FlyBtnUp = false end)
+		mkOff("DN", 8, function() SV.FlyBtnDown = true end, function() SV.FlyBtnDown = false end)
+		SV.FlyGui = g
 	end)
 	return ok
 end
@@ -2140,7 +2351,7 @@ local function FlyTick()
 	local r = GetRoot()
 	if not (h and r) then return end
 	if h.PlatformStand ~= true then h.PlatformStand = true end
-	if not FlyBV then
+	if not SV.FlyBV then
 		if not MakeFlyParts() then return end
 	end
 	local cf = CamCFrame()
@@ -2157,56 +2368,57 @@ local function FlyTick()
 		fy = fy.Unit
 		ry = ry.Unit
 		move = (ry * md.X) + (fy * -md.Z)
+		if move.Magnitude > 0.01 then move = move.Unit end
 	end
 	local vert = 0
-	if FlyMobile then
-		vert = (FlyBtnUp and 1 or 0) - (FlyBtnDown and 1 or 0)
+	if SV.FlyMobile then
+		vert = (SV.FlyBtnUp and 1 or 0) - (SV.FlyBtnDown and 1 or 0)
 	else
-		vert = (FlyKeys.up and 1 or 0) - (FlyKeys.down and 1 or 0)
+		vert = (SV.FlyKeys.up and 1 or 0) - (SV.FlyKeys.down and 1 or 0)
 	end
-	if move.Magnitude > 0.01 then move = move.Unit end
-	move = move + Vector3.new(0, vert, 0)
-	SetFlyVel(move)
-	if FlyBG then
-		FlyBG.CFrame = CFrame.new(r.Position, r.Position + cf.LookVector)
+	local final = (move * SV.FlySpeed) + Vector3.new(0, vert * SV.FlySpeed, 0)
+	pcall(function() r.AssemblyLinearVelocity = final end)
+	if SV.FlyBG then
+		SV.FlyBG.CFrame = CFrame.new(r.Position, r.Position + cf.LookVector)
 	end
 end
 
+
 local function StartFly(mobile)
-	FlyMobile = mobile and true or false
-	FlyOn = true
+	SV.FlyMobile = mobile and true or false
+	SV.FlyOn = true
 	if not MakeFlyParts() then
 		Notify("飞行", "找不到角色，稍后再试", 4)
-		FlyOn = false
+		SV.FlyOn = false
 		return false
 	end
-	if FlyMobile then MakeMobileFlyGui() end
-	if FlyConn then pcall(function() FlyConn:Disconnect() end) end
-	FlyConn = RS.Heartbeat:Connect(function()
-		if not FlyOn then return end
+	if SV.FlyMobile then MakeMobileFlyGui() end
+	if SV.FlyConn then pcall(function() SV.FlyConn:Disconnect() end) end
+	SV.FlyConn = RS.Heartbeat:Connect(function()
+		if not SV.FlyOn then return end
 		pcall(FlyTick)
 	end)
 	return true
 end
 
 UIS.InputBegan:Connect(function(input, gpe)
-	if not FlyOn or FlyMobile then return end
+	if not SV.FlyOn or SV.FlyMobile then return end
 	if gpe then return end
 	if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 	local k = input.KeyCode
-	if k == Enum.KeyCode.Space then FlyKeys.up = true end
+	if k == Enum.KeyCode.Space then SV.FlyKeys.up = true end
 	if k == Enum.KeyCode.LeftShift or k == Enum.KeyCode.RightShift
 		or k == Enum.KeyCode.LeftControl or k == Enum.KeyCode.RightControl
-		or k == Enum.KeyCode.LeftAlt then FlyKeys.down = true end
+		or k == Enum.KeyCode.LeftAlt then SV.FlyKeys.down = true end
 end)
 UIS.InputEnded:Connect(function(input)
-	if not FlyOn or FlyMobile then return end
+	if not SV.FlyOn or SV.FlyMobile then return end
 	if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 	local k = input.KeyCode
-	if k == Enum.KeyCode.Space then FlyKeys.up = false end
+	if k == Enum.KeyCode.Space then SV.FlyKeys.up = false end
 	if k == Enum.KeyCode.LeftShift or k == Enum.KeyCode.RightShift
 		or k == Enum.KeyCode.LeftControl or k == Enum.KeyCode.RightControl
-		or k == Enum.KeyCode.LeftAlt then FlyKeys.down = false end
+		or k == Enum.KeyCode.LeftAlt then SV.FlyKeys.down = false end
 end)
 
 SafeAdd(TabLocal, "Section", { Title = "飞行" })
@@ -2244,17 +2456,206 @@ TabLocal:Toggle({
 })
 SafeAdd(TabLocal, "Slider", {
 	Title = "飞行速度",
-	Desc = "16 - 300",
-	Value = { Min = 16, Max = 300, Default = 60 },
-	Step = 1,
-	Range = { 16, 300 },
-	CurrentValue = 60,
+	Desc = "16 - 800",
+	Value = { Min = 16, Max = 800, Default = 100 },
+	Step = 4,
+	Range = { 16, 800 },
+	CurrentValue = 100,
 	Callback = function(val)
-		if type(val) == "number" then FlySpeed = val end
+		if type(val) == "number" then SV.FlySpeed = val end
 	end,
 })
 
 --------------------------------------------------------------------------------
+-- ESP
+--------------------------------------------------------------------------------
+
+local TeamCache = nil
+local TeamCacheT = 0
+local function HasTeams()
+	local now = tick()
+	if TeamCache ~= nil and (now - TeamCacheT) < 5 then return TeamCache end
+	local res = false
+	pcall(function()
+		local seen = {}
+		local n = 0
+		for _, pl in ipairs(Players:GetPlayers()) do
+			local t = pl.Team
+			if t ~= nil then
+				if seen[t] == nil then
+					seen[t] = true
+					n = n + 1
+				end
+			end
+		end
+		res = (n >= 2)
+	end)
+	TeamCache = res
+	TeamCacheT = now
+	return res
+end
+
+local function EspParent()
+	local par = nil
+	if gethui then pcall(function() par = gethui() end) end
+	if not par then pcall(function() par = game:GetService("CoreGui") end) end
+	if not par then par = LP:WaitForChild("PlayerGui") end
+	return par
+end
+
+local function MakeEspGui()
+	if SV.EspGui then return SV.EspGui end
+	pcall(function()
+		local g = Instance.new("ScreenGui")
+		g.Name = "G2R5xEsp"
+		g.ResetOnSpawn = false
+		g.IgnoreGuiInset = true
+		g.DisplayOrder = 2147483640
+		g.Parent = EspParent()
+		SV.EspGui = g
+	end)
+	return SV.EspGui
+end
+
+local function ClearEsp()
+	for pl, o in pairs(SV.EspObjs) do
+		pcall(function()
+			if o.box then o.box:Destroy() end
+			if o.name then o.name:Destroy() end
+			if o.ray then o.ray:Destroy() end
+		end)
+	end
+	SV.EspObjs = {}
+end
+
+local function GetPartPos(pl)
+	local c = pl.Character
+	if not c then return nil end
+	local r = c:FindFirstChild("HumanoidRootPart") or c.PrimaryPart
+	if not r then return nil end
+	return r.Position, c
+end
+
+local function EspStep()
+	local cam = WS:FindFirstChild("Camera") or WS.CurrentCamera
+	if not cam then return end
+	local vp = cam.ViewportSize
+	local seen = {}
+	for _, pl in ipairs(Players:GetPlayers()) do
+		if pl ~= LP then
+			local pos, c = GetPartPos(pl)
+			local hum = c and c:FindFirstChildOfClass("Humanoid")
+			if pos and (not hum or hum.Health > 0) then
+				local sp, onScreen = cam:WorldToViewportPoint(pos)
+				local dist = math.floor((cam.CFrame.Position - pos).Magnitude)
+				local isTeam = (pl.Team and LP.Team and pl.Team == LP.Team)
+				if not SV.EspTeam and isTeam then
+				elseif onScreen and dist <= SV.EspDist then
+					seen[pl] = true
+					local o = SV.EspObjs[pl]
+					if not o then
+						o = {}
+						local box = Instance.new("Frame", SV.EspGui)
+						box.BackgroundTransparency = 1
+						box.Size = UDim2.new(0, 60, 0, 90)
+						pcall(function()
+							local s1 = Instance.new("UIStroke", box)
+							s1.Thickness = 1.5
+							box:SetAttribute("stroke", true)
+						end)
+						local nm = Instance.new("TextLabel", SV.EspGui)
+						nm.BackgroundTransparency = 1
+						nm.Size = UDim2.new(0, 160, 0, 18)
+						nm.TextXAlignment = Enum.TextXAlignment.Center
+						nm.TextSize = 13
+						nm.Font = Enum.Font.GothamBold
+						nm.TextStrokeTransparency = 0.5
+						local ray = Instance.new("Frame", SV.EspGui)
+						ray.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+						ray.BorderSizePixel = 0
+						ray.Size = UDim2.new(0, 1, 0, 1)
+						o.box = box
+						o.name = nm
+						o.ray = ray
+						SV.EspObjs[pl] = o
+					end
+					local col
+				if SV.EspColorMode == 1 then
+					col = Color3.fromRGB(255, 210, 60)
+				elseif SV.EspColorMode == 2 then
+					if not HasTeams() then
+						col = Color3.fromRGB(255, 210, 60)
+					else
+						col = isTeam and Color3.fromRGB(0, 255, 120) or Color3.fromRGB(255, 60, 60)
+					end
+				else
+					if not HasTeams() then
+						col = Color3.fromRGB(255, 210, 60)
+					else
+						col = isTeam and Color3.fromRGB(0, 255, 120) or Color3.fromRGB(255, 60, 60)
+					end
+				end
+					local h = 90 * (1 / math.max(dist, 1) * 12)
+					if h < 18 then h = 18 end
+					if h > 260 then h = 260 end
+					local w = h * 0.55
+					o.box.Size = UDim2.new(0, w, 0, h)
+					o.box.Position = UDim2.new(0, sp.X - w / 2, 0, sp.Y - h / 2)
+					pcall(function()
+						local st = o.box:FindFirstChildOfClass("UIStroke")
+						if st then st.Color = col else
+							o.box.BorderSizePixel = 2
+							o.box.BorderColor3 = col
+						end
+					end)
+					o.name.Text = pl.Name .. "  " .. tostring(dist) .. "m"
+					o.name.TextColor3 = col
+					o.name.Position = UDim2.new(0, sp.X - 80, 0, sp.Y - h / 2 - 16)
+					if SV.EspRay then
+						o.ray.Visible = true
+						local bx = vp.X / 2
+						local by = vp.Y
+						local dx = sp.X - bx
+						local dy = sp.Y - by
+						local len = math.sqrt(dx * dx + dy * dy)
+						o.ray.Size = UDim2.new(0, len, 0, 1)
+						o.ray.Position = UDim2.new(0, bx, 0, by)
+						o.ray.Rotation = math.deg(math.atan2(dy, dx))
+						o.ray.BackgroundColor3 = col
+					else
+						o.ray.Visible = false
+					end
+				end
+			end
+		end
+	end
+	for pl, o in pairs(SV.EspObjs) do
+		if not seen[pl] then
+			pcall(function()
+				o.box.Visible = false
+				o.name.Visible = false
+				o.ray.Visible = false
+			end)
+		end
+	end
+end
+
+local function SetEsp(on)
+	SV.EspOn = on
+	if SV.EspConn then pcall(function() SV.EspConn:Disconnect() end) SV.EspConn = nil end
+	if not on then
+		ClearEsp()
+		if SV.EspGui then pcall(function() SV.EspGui:Destroy() end) SV.EspGui = nil end
+		return
+	end
+	MakeEspGui()
+	SV.EspConn = RS.Heartbeat:Connect(function()
+		if not SV.EspOn then return end
+		pcall(EspStep)
+	end)
+end
+
+---------------------------------------------------------------------------------
 -- 娱乐
 --------------------------------------------------------------------------------
 local TabFun = SafeTab({ Title = "娱乐", Icon = "gamepad-2" })
@@ -2269,27 +2670,411 @@ for _, e in ipairs(FUN_LIB) do
 end
 
 --------------------------------------------------------------------------------
+-- 娱乐功能（纯本地视觉/动画，不改服务端数据）
+--------------------------------------------------------------------------------
+local function FunStop(key)
+	if SV.FunConns[key] then pcall(function() SV.FunConns[key]:Disconnect() end) end
+	SV.FunConns[key] = nil
+end
+local function FunRun(key, fn)
+	FunStop(key)
+	pcall(function() SV.FunConns[key] = fn() end)
+end
+
+local function PartList()
+	local c = LP.Character
+	if not c then return {} end
+	local out = {}
+	for _, d in ipairs(c:GetDescendants()) do
+		if d:IsA("BasePart") then out[#out + 1] = d end
+	end
+	return out
+end
+
+local function SetRainbow(on)
+	SV.RainbowOn = on
+	if not on then
+		FunStop("rainbow")
+		pcall(function()
+			for _, p in ipairs(PartList()) do
+				if p:IsA("BasePart") then
+					pcall(function() p.Color = Color3.fromRGB(163, 162, 165) end)
+				end
+			end
+		end)
+		return
+	end
+	FunRun("rainbow", function()
+		local t = 0
+		return RS.Heartbeat:Connect(function(dt)
+			if not SV.RainbowOn then return end
+			t = (t + dt * 0.6) % 1
+			local col = Color3.fromHSV(t, 1, 1)
+			pcall(function()
+				for _, p in ipairs(PartList()) do
+					pcall(function() p.Color = col end)
+				end
+			end)
+		end)
+	end)
+end
+
+local function SetSpin(on)
+	SV.SpinOn = on
+	if not on then FunStop("spin") return end
+	FunRun("spin", function()
+		return RS.Heartbeat:Connect(function()
+			if not SV.SpinOn then return end
+			pcall(function()
+				local r = GetRoot()
+				if r then r.CFrame = r.CFrame * CFrame.Angles(0, math.rad(9), 0) end
+			end)
+		end)
+	end)
+end
+
+local function SetBigHead(on)
+	SV.HeadOn = on
+	if not on then
+		FunStop("head")
+		pcall(function()
+			if SV.HeadSaved then
+				for p, s in pairs(SV.HeadSaved) do
+					pcall(function() p.Size = s end)
+				end
+				SV.HeadSaved = nil
+			end
+		end)
+		return
+	end
+	pcall(function()
+		local c = LP.Character
+		if not c then return end
+		SV.HeadSaved = {}
+		local head = c:FindFirstChild("Head")
+		if head then
+			SV.HeadSaved[head] = head.Size
+			head.Size = head.Size * 3
+		end
+		for _, d in ipairs(c:GetDescendants()) do
+			if d:IsA("SpecialMesh") or d:IsA("BlockMesh") then
+				if d.Parent and d.Parent.Name == "Head" then
+					SV.HeadSaved[d] = d.Scale
+					d.Scale = d.Scale * 3
+				end
+			end
+		end
+	end)
+	FunRun("head", function()
+		return RS.Heartbeat:Connect(function()
+			if not SV.HeadOn then return end
+			pcall(function()
+				local c = LP.Character
+				if not c then return end
+				local head = c:FindFirstChild("Head")
+				if head and head.Size.Magnitude < 3 then
+					head.Size = Vector3.new(2, 1, 1) * 3
+				end
+			end)
+		end)
+	end)
+end
+
+local function SetGhost(on)
+	SV.GhostOn = on
+	if not on then
+		FunStop("ghost")
+		pcall(function()
+			if SV.GhostSaved then
+				for p, v in pairs(SV.GhostSaved) do
+					pcall(function() p.Transparency = v end)
+				end
+				SV.GhostSaved = nil
+			end
+		end)
+		return
+	end
+	pcall(function()
+		SV.GhostSaved = {}
+		for _, p in ipairs(PartList()) do
+			SV.GhostSaved[p] = p.Transparency
+			p.Transparency = 0.75
+		end
+	end)
+	FunRun("ghost", function()
+		return RS.Heartbeat:Connect(function()
+			if not SV.GhostOn then return end
+			pcall(function()
+				for _, p in ipairs(PartList()) do
+					if p.Transparency < 0.5 then p.Transparency = 0.75 end
+				end
+			end)
+		end)
+	end)
+end
+
+local function SetFloat(on)
+	SV.FloatOn = on
+	if not on then FunStop("float") return end
+	FunRun("float", function()
+		local t = 0
+		return RS.Heartbeat:Connect(function(dt)
+			if not SV.FloatOn then return end
+			t = t + dt
+			pcall(function()
+				local r = GetRoot()
+				if r then
+					local h = GetHum()
+					if h then h.PlatformStand = true end
+					r.CFrame = r.CFrame + Vector3.new(0, math.sin(t * 3) * 0.12, 0)
+				end
+			end)
+		end)
+	end)
+end
+
+local DANCE_IDS = { "rbxassetid://507771019", "rbxassetid://507776043", "rbxassetid://507770818" }
+local function StopDance()
+	if SV.DanceTrack then pcall(function() SV.DanceTrack:Stop() end) end
+	SV.DanceTrack = nil
+end
+local function SetDance(on)
+	SV.DanceOn = on
+	StopDance()
+	FunStop("dance")
+	if not on then return end
+	local function play()
+		pcall(function()
+			local h = GetHum()
+			if not h then return end
+			local an = Instance.new("Animation")
+			an.AnimationId = DANCE_IDS[SV.DanceIdx]
+			local tr = h:LoadAnimation(an)
+			tr.Looped = true
+			tr:Play()
+			SV.DanceTrack = tr
+		end)
+	end
+	play()
+	FunRun("dance", function()
+		return RS.Heartbeat:Connect(function()
+			if not SV.DanceOn then return end
+			if not SV.DanceTrack then return end
+			pcall(function()
+				if not SV.DanceTrack.IsPlaying then SV.DanceTrack:Play() end
+			end)
+		end)
+	end)
+end
+
+local EMOTE_IDS = {
+	["挥手"] = "rbxassetid://507770239",
+	["指"] = "rbxassetid://507770453",
+	["大笑"] = "rbxassetid://507770818",
+	["坐下"] = "rbxassetid://507771019",
+	["啦啦队"] = "rbxassetid://507771955",
+	["鼓掌"] = "rbxassetid://507770453",
+}
+local function PlayEmote(id)
+	pcall(function()
+		if SV.EmoteTrack then SV.EmoteTrack:Stop() end
+		local h = GetHum()
+		if not h then return end
+		local an = Instance.new("Animation")
+		an.AnimationId = id
+		local tr = h:LoadAnimation(an)
+		tr:Play()
+		SV.EmoteTrack = tr
+	end)
+end
+
+local function SetBounce(on)
+	SV.BounceOn = on
+	if not on then FunStop("bounce") return end
+	FunRun("bounce", function()
+		return RS.Heartbeat:Connect(function()
+			if not SV.BounceOn then return end
+			pcall(function()
+				local h = GetHum()
+				local r = GetRoot()
+				if not (h and r) then return end
+				if IsGrounded(h) then
+					r.AssemblyLinearVelocity = Vector3.new(
+						r.AssemblyLinearVelocity.X, 60, r.AssemblyLinearVelocity.Z
+					)
+				end
+			end)
+		end)
+	end)
+end
+
+local function PlaySoundId(id, vol)
+	pcall(function()
+		local c = LP.Character
+		if not c then return end
+		local r = c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Head") or c.PrimaryPart
+		if not r then return end
+		local snd = Instance.new("Sound")
+		snd.SoundId = "rbxassetid://" .. tostring(id)
+		snd.Volume = vol or 1
+		snd.Parent = r
+		snd:Play()
+		task.delay(12, function() pcall(function() snd:Destroy() end) end)
+	end)
+end
+
+SafeAdd(TabFun, "Section", { Title = "ESP" })
+TabFun:Toggle({
+	Title = "启用 ESP",
+	Desc = "方框 + 名字 + 距离 + 射线",
+	Value = false,
+	Callback = function(state)
+		SetEsp(state)
+	end,
+})
+TabFun:Toggle({
+	Title = "显示队友",
+	Value = true,
+	Callback = function(state)
+		SV.EspTeam = state
+	end,
+})
+TabFun:Toggle({
+	Title = "显示射线",
+	Value = true,
+	Callback = function(state)
+		SV.EspRay = state
+	end,
+})
+SafeAdd(TabFun, "Dropdown", {
+	Title = "ESP 颜色",
+	Desc = "无队伍游戏一律中性黄，不会瞎标红",
+	Values = { "自动识别", "统一黄色", "队友绿/敌人红" },
+	Value = "自动识别",
+	Multi = false,
+	AllowNone = false,
+	Callback = function(op)
+		local pick = op
+		if type(op) == "table" then pick = op[1] or op.Value end
+		local map = { ["自动识别"] = 0, ["统一黄色"] = 1, ["队友绿/敌人红"] = 2 }
+		if map[pick] then SV.EspColorMode = map[pick] end
+	end,
+})
+SafeAdd(TabFun, "Slider", {
+	Title = "ESP 最远距离",
+	Value = { Min = 50, Max = 2000, Default = 500 },
+	Step = 50,
+	Range = { 50, 2000 },
+	CurrentValue = 500,
+	Callback = function(val)
+		if type(val) == "number" then SV.EspDist = val end
+	end,
+})
+
+SafeAdd(TabFun, "Section", { Title = "视觉娱乐" })
+TabFun:Toggle({
+	Title = "彩虹角色",
+	Desc = "身体循环变色",
+	Value = false,
+	Callback = function(state) SetRainbow(state) end,
+})
+TabFun:Toggle({
+	Title = "自旋转",
+	Desc = "原地鬼畜转圈",
+	Value = false,
+	Callback = function(state) SetSpin(state) end,
+})
+TabFun:Toggle({
+	Title = "大头模式",
+	Value = false,
+	Callback = function(state) SetBigHead(state) end,
+})
+TabFun:Toggle({
+	Title = "幽灵半透明",
+	Desc = "自己变半透明",
+	Value = false,
+	Callback = function(state) SetGhost(state) end,
+})
+TabFun:Toggle({
+	Title = "悬浮摇摆",
+	Desc = "离地上下浮动",
+	Value = false,
+	Callback = function(state) SetFloat(state) end,
+})
+TabFun:Toggle({
+	Title = "跳舞",
+	Desc = "循环播放舞蹈动画",
+	Value = false,
+	Callback = function(state) SetDance(state) end,
+})
+SafeAdd(TabFun, "Dropdown", {
+	Title = "舞蹈切换",
+	Values = { "舞蹈一", "舞蹈二", "舞蹈三" },
+	Value = "舞蹈一",
+	Multi = false,
+	AllowNone = false,
+	Callback = function(op)
+		local pick = op
+		if type(op) == "table" then pick = op[1] or op.Value end
+		local map = { ["舞蹈一"] = 1, ["舞蹈二"] = 2, ["舞蹈三"] = 3 }
+		if map[pick] then
+			SV.DanceIdx = map[pick]
+			if SV.DanceOn then SetDance(true) end
+		end
+	end,
+})
+TabFun:Toggle({
+	Title = "弹簧蹦跳",
+	Desc = "落地自动弹起",
+	Value = false,
+	Callback = function(state) SetBounce(state) end,
+})
+SafeAdd(TabFun, "Section", { Title = "表情动作" })
+for label, aid in pairs(EMOTE_IDS) do
+	SafeAdd(TabFun, "Button", {
+		Title = label,
+		Desc = "播放动作",
+		Callback = function() PlayEmote(aid) end,
+	})
+end
+SafeAdd(TabFun, "Section", { Title = "音效" })
+SafeAdd(TabFun, "Input", {
+	Title = "播放音效",
+	Desc = "输入音频 ID，回车播放",
+	Placeholder = "例如 9118823106",
+	Callback = function(txt)
+		pcall(function()
+			local n = tonumber(tostring(txt):match("%d+"))
+			if n then
+				PlaySoundId(n, 1)
+				Notify("音效", "已播放", 3)
+			end
+		end)
+	end,
+})
+
+--------------------------------------------------------------------------------
 -- 关于
 --------------------------------------------------------------------------------
 LP.CharacterAdded:Connect(function()
 	task.wait(1.2)
 	pcall(function()
-		if ModOn then
-			IJAir = 0
-			if JumpMode == 1 or JumpMode == 2 then DoJump() else DoJump() end
+		if SV.ModOn then
+			SV.IJAir = 0
+			if SV.JumpMode == 1 or SV.JumpMode == 2 then DoJump() else DoJump() end
 			DoSpeed()
-			if SpeedAuto or JumpAuto then AutoWatch() end
+			if SV.SpeedAuto or SV.JumpAuto then AutoWatch() end
 		end
-		if IJOn then StopIJ() DoIJ() end
-		if NCOn then
-			NCSaved = {}
-			NCLastSafe = nil
+		if SV.IJOn then StopIJ() DoIJ() end
+		if SV.NCOn then
+			SV.NCSaved = {}
+			SV.NCLastSafe = nil
 			task.wait(0.3)
 			RecordSafe()
 			DoNC()
 		end
-		if FlyOn then
-			local mb = FlyMobile
+		if SV.FlyOn then
+			local mb = SV.FlyMobile
 			StopFly()
 			task.wait(0.4)
 			StartFly(mb)
@@ -2355,18 +3140,17 @@ SafeAdd(TabAbout, "Paragraph", {
 --------------------------------------------------------------------------------
 -- 最近运行（最多 3 条）
 --------------------------------------------------------------------------------
-local RECENT = {}
 task.spawn(function()
-	local saved = FS.Load("recent")
+	local saved = SV.FS.Load("recent")
 	if type(saved) == "table" then
 		for _, nm in ipairs(saved) do
 			for _, e in ipairs(SCRIPT_LIB) do
-				if e.name == nm then RECENT[#RECENT + 1] = e break end
+				if e.name == nm then SV.RECENT[#SV.RECENT + 1] = e break end
 			end
 			for _, e in ipairs(FUN_LIB) do
-				if e.name == nm then RECENT[#RECENT + 1] = e break end
+				if e.name == nm then SV.RECENT[#SV.RECENT + 1] = e break end
 			end
-			if #RECENT >= (CFG.recentMax or 10) then break end
+			if #SV.RECENT >= (CFG.recentMax or 10) then break end
 		end
 	end
 end)
@@ -2381,7 +3165,7 @@ RefreshRecent = function()
 			pcall(function() c:Destroy() end)
 		end
 	end
-	if #RECENT == 0 then
+	if #SV.RECENT == 0 then
 		local lb = Instance.new("TextLabel", cf)
 		lb.Name = "G2R5xRecentItem"
 		lb.Size = UDim2.new(1, 0, 0, 34)
@@ -2393,7 +3177,7 @@ RefreshRecent = function()
 		lb.LayoutOrder = -900
 		return
 	end
-	for idx, e in ipairs(RECENT) do
+	for idx, e in ipairs(SV.RECENT) do
 		local row = Instance.new("Frame", cf)
 		row.Name = "G2R5xRecentItem"
 		row.Size = UDim2.new(1, 0, 0, 38)
@@ -2418,15 +3202,15 @@ end
 
 PushRecent = function(entry)
 	if not entry then return end
-	for i = #RECENT, 1, -1 do
-		if RECENT[i].name == entry.name then table.remove(RECENT, i) end
+	for i = #SV.RECENT, 1, -1 do
+		if SV.RECENT[i].name == entry.name then table.remove(SV.RECENT, i) end
 	end
-	table.insert(RECENT, 1, entry)
+	table.insert(SV.RECENT, 1, entry)
 	local cap = CFG.recentMax or 10
-	while #RECENT > cap do table.remove(RECENT, #RECENT) end
+	while #SV.RECENT > cap do table.remove(SV.RECENT, #SV.RECENT) end
 	local names = {}
-	for _, e in ipairs(RECENT) do names[#names + 1] = e.name end
-	FS.Save("recent", names)
+	for _, e in ipairs(SV.RECENT) do names[#names + 1] = e.name end
+	SV.FS.Save("recent", names)
 	pcall(RefreshRecent)
 end
 
@@ -2622,12 +3406,10 @@ SafeAdd(TabSet, "Dropdown", {
 		local pick = op
 		if type(op) == "table" then pick = op[1] or op.Value end
 		CFG.theme = tostring(pick or "Dark")
-		pcall(function() WindUI:SetTheme(CFG.theme) end)
+		pcall(function() SV.WindUI:SetTheme(CFG.theme) end)
 		SaveCfg()
 	end,
 })
-local SCALE_MIN = 20
-local SCALE_MAX = 300
 local AutoFitOn = (CFG.autoFit ~= false)
 
 local function Viewport()
@@ -2639,20 +3421,20 @@ end
 local function AllUIScale()
 	local out = {}
 	pcall(function()
-		if WindUI and WindUI.ScreenGui then
-			local us = WindUI.ScreenGui:FindFirstChild("UIScale")
+		if SV.WindUI and SV.WindUI.ScreenGui then
+			local us = SV.WindUI.ScreenGui:FindFirstChild("UIScale")
 			if us then out[#out + 1] = us end
 		end
 	end)
 	pcall(function()
-		if WindUI and WindUI.NotificationGui then
-			local us = WindUI.NotificationGui:FindFirstChild("UIScale")
+		if SV.WindUI and SV.WindUI.NotificationGui then
+			local us = SV.WindUI.NotificationGui:FindFirstChild("UIScale")
 			if us then out[#out + 1] = us end
 		end
 	end)
 	pcall(function()
-		if WindUI and WindUI.DropdownGui then
-			local us = WindUI.DropdownGui:FindFirstChild("UIScale")
+		if SV.WindUI and SV.WindUI.DropdownGui then
+			local us = SV.WindUI.DropdownGui:FindFirstChild("UIScale")
 			if us then out[#out + 1] = us end
 		end
 	end)
@@ -2685,13 +3467,13 @@ local function CollectScaleTargets()
 		end
 	end
 	pcall(function()
-		if WindUI and WindUI.ScreenGui then add(WindUI.ScreenGui:FindFirstChildWhichIsA("UIScale")) end
+		if SV.WindUI and SV.WindUI.ScreenGui then add(SV.WindUI.ScreenGui:FindFirstChildWhichIsA("UIScale")) end
 	end)
 	pcall(function()
-		if WindUI and WindUI.NotificationGui then add(WindUI.NotificationGui:FindFirstChildWhichIsA("UIScale")) end
+		if SV.WindUI and SV.WindUI.NotificationGui then add(SV.WindUI.NotificationGui:FindFirstChildWhichIsA("UIScale")) end
 	end)
 	pcall(function()
-		if WindUI and WindUI.DropdownGui then add(WindUI.DropdownGui:FindFirstChildWhichIsA("UIScale")) end
+		if SV.WindUI and SV.WindUI.DropdownGui then add(SV.WindUI.DropdownGui:FindFirstChildWhichIsA("UIScale")) end
 	end)
 	pcall(function()
 		local roots = {}
@@ -2744,7 +3526,7 @@ local function RawSetScale(v)
 		end)
 	end
 	pcall(function()
-		if WindUI then WindUI.UIScale = v end
+		if SV.WindUI then SV.WindUI.UIScale = v end
 	end)
 	pcall(function()
 		if Window and Window.SetUIScale then Window:SetUIScale(v) end
@@ -2789,7 +3571,7 @@ local function MeasureBase()
 	end
 end
 
-local HardMax = SCALE_MAX
+local HardMax = SV.SCALE_MAX
 
 local function DynMax()
 	MeasureBase()
@@ -2798,7 +3580,7 @@ local function DynMax()
 	local mx = (vp.X * 0.94) / BaseW
 	local my = (vp.Y * 0.94) / BaseH
 	local m = math.floor(math.min(mx, my) * 100)
-	if m < SCALE_MIN then m = SCALE_MIN end
+	if m < SV.SCALE_MIN then m = SV.SCALE_MIN end
 	if m > HardMax then m = HardMax end
 	return m
 end
@@ -2806,17 +3588,16 @@ end
 local function ClampScale(v, force)
 	v = tonumber(v) or 100
 	if force then
-		if v < SCALE_MIN then v = SCALE_MIN end
+		if v < SV.SCALE_MIN then v = SV.SCALE_MIN end
 		if v > HardMax then v = HardMax end
 		return v
 	end
 	local mx = DynMax()
-	if v < SCALE_MIN then v = SCALE_MIN end
+	if v < SV.SCALE_MIN then v = SV.SCALE_MIN end
 	if v > mx then v = mx end
 	return v
 end
 
-local LastScaleMsg = 0
 
 local function ApplyScale(pct, quiet, force)
 	pct = ClampScale(pct, force)
@@ -2825,8 +3606,8 @@ local function ApplyScale(pct, quiet, force)
 	RawSetScaleRetry(CFG.scale)
 	SaveCfg()
 	if not quiet then
-		if tick() - LastScaleMsg > 0.4 then
-			LastScaleMsg = tick()
+		if tick() - SV.LastScaleMsg > 0.4 then
+			SV.LastScaleMsg = tick()
 			Notify("界面大小", "已设为 " .. tostring(pct) .. "%", 3)
 		end
 	end
@@ -2837,7 +3618,6 @@ local function ApplyScale(pct, quiet, force)
 end
 
 
-local RescueBtn = nil
 
 local function MakeRescueBtn()
 	local ok = pcall(function()
@@ -2910,18 +3690,18 @@ local function MakeRescueBtn()
 			Notify("界面大小", "已强制恢复 100%", 4)
 		end)
 
-		RescueBtn = g
+		SV.RescueBtn = g
 	end)
 	return ok
 end
 
 local function SetRescue(on)
 	if on then
-		if not RescueBtn then MakeRescueBtn() end
+		if not SV.RescueBtn then MakeRescueBtn() end
 	else
-		if RescueBtn then
-			pcall(function() RescueBtn:Destroy() end)
-			RescueBtn = nil
+		if SV.RescueBtn then
+			pcall(function() SV.RescueBtn:Destroy() end)
+			SV.RescueBtn = nil
 		end
 	end
 end
@@ -2936,7 +3716,7 @@ local function FitScale()
 	local over = math.max(w / vp.X, h / vp.Y)
 	if over <= 0.94 then return nil end
 	local fit = math.floor(cur / over * 0.9)
-	if fit < SCALE_MIN then fit = SCALE_MIN end
+	if fit < SV.SCALE_MIN then fit = SV.SCALE_MIN end
 	local mxp = DynMax()
 	if fit > mxp then fit = mxp end
 	if fit >= cur then return nil end
@@ -2964,7 +3744,7 @@ end)
 SafeAdd(TabSet, "Section", { Title = "界面大小" })
 SafeAdd(TabSet, "Input", {
 	Title = "缩放百分比",
-	Desc = "输入数字后回车（" .. tostring(SCALE_MIN) .. " - " .. tostring(SCALE_MAX) .. "，超出屏幕会自动收小）",
+	Desc = "输入数字后回车（" .. tostring(SV.SCALE_MIN) .. " - " .. tostring(SV.SCALE_MAX) .. "，超出屏幕会自动收小）",
 	Placeholder = "例如 100",
 	Value = tostring(math.floor((CFG.scale or 1) * 100)),
 	InputIcon = "percent",
@@ -3062,7 +3842,7 @@ SafeAdd(TabSet, "Dropdown", {
 		local pick = op
 		if type(op) == "table" then pick = op[1] or op.Value end
 		for i, v in ipairs(INTRO_NAMES) do
-			if v == pick then CFG.introStyle = i INTRO_STYLE = i end
+			if v == pick then CFG.introStyle = i SV.INTRO_STYLE = i end
 		end
 		SaveCfg()
 	end,
@@ -3161,8 +3941,8 @@ SafeAdd(TabSet, "Slider", {
 		if type(val) == "number" then
 			CFG.recentMax = val
 			SaveCfg()
-			while #RECENT > CFG.recentMax do table.remove(RECENT, #RECENT) end
-			FS.Save("recent", RECENT)
+			while #SV.RECENT > CFG.recentMax do table.remove(SV.RECENT, #SV.RECENT) end
+			SV.FS.Save("recent", SV.RECENT)
 			pcall(RefreshRecent)
 		end
 	end,
@@ -3181,8 +3961,8 @@ SafeAdd(TabSet, "Button", {
 	Title = "清空最近记录",
 	Desc = "删除本地保存的最近运行",
 	Callback = function()
-		RECENT = {}
-		FS.Save("recent", {})
+		SV.RECENT = {}
+		SV.FS.Save("recent", {})
 		pcall(RefreshRecent)
 		Notify("设置", "最近记录已清空", 4)
 	end,
@@ -3208,10 +3988,10 @@ SafeAdd(TabSet, "Button", {
 		CFG.lowPerf = false
 		CFG.sideBar = true
 		CFG.rescue = true
-		INTRO_STYLE = 1
+		SV.INTRO_STYLE = 1
 		AutoFitOn = true
 		SaveCfg()
-		pcall(function() if WindUI and WindUI.SetTheme then WindUI:SetTheme("Dark") end end)
+		pcall(function() if SV.WindUI and SV.WindUI.SetTheme then SV.WindUI:SetTheme("Dark") end end)
 		pcall(function()
 			if Window and Window.ToggleTransparency then Window:ToggleTransparency(false) end
 		end)
@@ -3243,7 +4023,7 @@ end)
 pcall(function()
 	getgenv().G2R5X = {
 		Lib = SCRIPT_LIB,
-		Recent = RECENT,
+		Recent = SV.RECENT,
 		Run = RunScript,
 		Scale = function(v) return ApplyScale(v, false, true) end,
 		Rescue = function(v) SetRescue(v ~= false) end,
@@ -3270,8 +4050,8 @@ task.spawn(function()
 		pcall(function()
 			if Window and Window.SetUIScale then
 				Window:SetUIScale(CFG.scale)
-			elseif WindUI and WindUI.ScreenGui then
-				local us = WindUI.ScreenGui:FindFirstChild("UIScale")
+			elseif SV.WindUI and SV.WindUI.ScreenGui then
+				local us = SV.WindUI.ScreenGui:FindFirstChild("UIScale")
 				if us then us.Scale = CFG.scale end
 			end
 		end)
