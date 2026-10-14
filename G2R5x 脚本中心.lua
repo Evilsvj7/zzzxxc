@@ -7,6 +7,7 @@ local TS = game:GetService("TweenService")
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("RunService")
 local WS = game:GetService("Workspace")
+local SoundService = game:GetService("SoundService")
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
 local HUB_NAME = "G2R5x"
@@ -90,6 +91,7 @@ local SV = {}
 	SV.EspOn = false
 	SV.EspTeam = true
 	SV.EspRay = true
+	SV.EspRayW = 2
 	SV.EspDist = 500
 	SV.EspColorMode = 0
 	SV.EspGui = nil
@@ -392,6 +394,9 @@ if type(savedCfg) == "table" then
 	for k, v in pairs(savedCfg) do
 		CFG[k] = v
 	end
+end
+if type(CFG.recentMax) ~= "number" or CFG.recentMax < 10 then
+	CFG.recentMax = 10
 end
 local function SaveCfg()
 	SV.FS.Save("config", {
@@ -2528,12 +2533,22 @@ local function ClearEsp()
 	SV.EspObjs = {}
 end
 
+local EspLastPos = {}
 local function GetPartPos(pl)
 	local c = pl.Character
-	if not c then return nil end
-	local r = c:FindFirstChild("HumanoidRootPart") or c.PrimaryPart
-	if not r then return nil end
-	return r.Position, c
+	local r = nil
+	if c then
+		r = c:FindFirstChild("HumanoidRootPart") or c.PrimaryPart
+	end
+	if r then
+		EspLastPos[pl] = { pos = r.Position, t = tick(), c = c }
+		return r.Position, c
+	end
+	local rec = EspLastPos[pl]
+	if rec and (tick() - rec.t) < 6 then
+		return rec.pos, rec.c
+	end
+	return nil
 end
 
 local function EspStep()
@@ -2550,7 +2565,7 @@ local function EspStep()
 				local dist = math.floor((cam.CFrame.Position - pos).Magnitude)
 				local isTeam = (pl.Team and LP.Team and pl.Team == LP.Team)
 				if not SV.EspTeam and isTeam then
-				elseif onScreen and dist <= SV.EspDist then
+				elseif dist <= SV.EspDist then
 					seen[pl] = true
 					local o = SV.EspObjs[pl]
 					if not o then
@@ -2573,12 +2588,16 @@ local function EspStep()
 						local ray = Instance.new("Frame", SV.EspGui)
 						ray.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 						ray.BorderSizePixel = 0
-						ray.Size = UDim2.new(0, 1, 0, 1)
+						ray.AnchorPoint = Vector2.new(0, 0.5)
+						ray.BackgroundTransparency = 0
+						ray.Size = UDim2.new(0, 1, 0, SV.EspRayW)
 						o.box = box
 						o.name = nm
 						o.ray = ray
 						SV.EspObjs[pl] = o
 					end
+					seen[pl] = true
+					local vis = onScreen
 					local col
 				if SV.EspColorMode == 1 then
 					col = Color3.fromRGB(255, 210, 60)
@@ -2601,6 +2620,8 @@ local function EspStep()
 					local w = h * 0.55
 					o.box.Size = UDim2.new(0, w, 0, h)
 					o.box.Position = UDim2.new(0, sp.X - w / 2, 0, sp.Y - h / 2)
+					o.box.Visible = vis
+					o.name.Visible = vis
 					pcall(function()
 						local st = o.box:FindFirstChildOfClass("UIStroke")
 						if st then st.Color = col else
@@ -2615,13 +2636,30 @@ local function EspStep()
 						o.ray.Visible = true
 						local bx = vp.X / 2
 						local by = vp.Y
-						local dx = sp.X - bx
-						local dy = sp.Y - by
+						local tx, ty = sp.X, sp.Y
+						if not vis then
+							local dx0 = sp.X - bx
+							local dy0 = sp.Y - by
+							local m = math.abs(dx0)
+							local m2 = math.abs(dy0)
+							local sc = 1
+							if m > 0.001 or m2 > 0.001 then
+								local sx = math.abs((vp.X * 0.5) / (dx0 ~= 0 and dx0 or 0.001))
+								local sy = math.abs((vp.Y * 0.5) / (dy0 ~= 0 and dy0 or 0.001))
+								sc = math.min(sx, sy)
+							end
+							tx = bx + dx0 * sc
+							ty = by + dy0 * sc
+						end
+						local dx = tx - bx
+						local dy = ty - by
 						local len = math.sqrt(dx * dx + dy * dy)
-						o.ray.Size = UDim2.new(0, len, 0, 1)
+						if len < 2 then len = 2 end
+						o.ray.Size = UDim2.new(0, len, 0, SV.EspRayW)
 						o.ray.Position = UDim2.new(0, bx, 0, by)
 						o.ray.Rotation = math.deg(math.atan2(dy, dx))
 						o.ray.BackgroundColor3 = col
+						o.ray.BackgroundTransparency = vis and 0 or 0.35
 					else
 						o.ray.Visible = false
 					end
@@ -2659,6 +2697,17 @@ end
 -- 娱乐
 --------------------------------------------------------------------------------
 local TabFun = SafeTab({ Title = "娱乐", Icon = "gamepad-2" })
+for _, e in ipairs(SCRIPT_LIB) do
+	if e.cat == "娱乐" then
+		SafeAdd(TabFun, "Button", {
+			Title = e.name,
+			Desc = e.desc or "点击执行",
+			Callback = function()
+				RunScript(e)
+			end,
+		})
+	end
+end
 for _, e in ipairs(FUN_LIB) do
 	SafeAdd(TabFun, "Button", {
 		Title = e.name,
@@ -2691,19 +2740,47 @@ local function PartList()
 	return out
 end
 
+local BODY_NAMES = {
+	Head = 1, Torso = 1, UpperTorso = 1, LowerTorso = 1,
+	LeftArm = 1, RightArm = 1, LeftUpperArm = 1, RightUpperArm = 1,
+	LeftLowerArm = 1, RightLowerArm = 1, LeftHand = 1, RightHand = 1,
+	LeftLeg = 1, RightLeg = 1, LeftUpperLeg = 1, RightUpperLeg = 1,
+	LeftLowerLeg = 1, RightLowerLeg = 1, LeftFoot = 1, RightFoot = 1,
+	HumanoidRootPart = 1,
+}
+local function BodyParts(c)
+	local out = {}
+	for _, d in ipairs(c:GetDescendants()) do
+		if d:IsA("BasePart") and BODY_NAMES[d.Name] then
+			out[#out + 1] = d
+		end
+	end
+	return out
+end
+
+local RainbowSaved = nil
 local function SetRainbow(on)
 	SV.RainbowOn = on
 	if not on then
 		FunStop("rainbow")
 		pcall(function()
-			for _, p in ipairs(PartList()) do
-				if p:IsA("BasePart") then
-					pcall(function() p.Color = Color3.fromRGB(163, 162, 165) end)
+			if RainbowSaved then
+				for p, c in pairs(RainbowSaved) do
+					pcall(function() p.Color = c end)
 				end
+				RainbowSaved = nil
 			end
 		end)
 		return
 	end
+	pcall(function()
+		local c = LP.Character
+		if not c then return end
+		RainbowSaved = {}
+		for _, p in ipairs(BodyParts(c)) do
+			RainbowSaved[p] = p.Color
+		end
+	end)
 	FunRun("rainbow", function()
 		local t = 0
 		return RS.Heartbeat:Connect(function(dt)
@@ -2711,7 +2788,9 @@ local function SetRainbow(on)
 			t = (t + dt * 0.6) % 1
 			local col = Color3.fromHSV(t, 1, 1)
 			pcall(function()
-				for _, p in ipairs(PartList()) do
+				local c = LP.Character
+				if not c then return end
+				for _, p in ipairs(BodyParts(c)) do
 					pcall(function() p.Color = col end)
 				end
 			end)
@@ -2813,9 +2892,26 @@ local function SetGhost(on)
 	end)
 end
 
+local FloatBase = nil
 local function SetFloat(on)
 	SV.FloatOn = on
-	if not on then FunStop("float") return end
+	if not on then
+		FunStop("float")
+		pcall(function()
+			local h = GetHum()
+			if h then h.PlatformStand = false end
+			local r = GetRoot()
+			if r and FloatBase then
+				r.CFrame = CFrame.new(r.Position.X, FloatBase, r.Position.Z)
+			end
+		end)
+		FloatBase = nil
+		return
+	end
+	pcall(function()
+		local r = GetRoot()
+		if r then FloatBase = r.Position.Y + 3 end
+	end)
 	FunRun("float", function()
 		local t = 0
 		return RS.Heartbeat:Connect(function(dt)
@@ -2823,11 +2919,15 @@ local function SetFloat(on)
 			t = t + dt
 			pcall(function()
 				local r = GetRoot()
-				if r then
-					local h = GetHum()
-					if h then h.PlatformStand = true end
-					r.CFrame = r.CFrame + Vector3.new(0, math.sin(t * 3) * 0.12, 0)
-				end
+				if not r then return end
+				if not FloatBase then FloatBase = r.Position.Y + 3 end
+				local cur = r.AssemblyLinearVelocity
+				r.AssemblyLinearVelocity = Vector3.new(cur.X, 0, cur.Z)
+				r.CFrame = CFrame.new(
+					r.Position.X,
+					FloatBase + math.sin(t * 2.2) * 1.2,
+					r.Position.Z
+				) * (r.CFrame - r.CFrame.Position)
 			end)
 		end)
 	end)
@@ -2868,24 +2968,33 @@ local function SetDance(on)
 end
 
 local EMOTE_IDS = {
-	["挥手"] = "rbxassetid://507770239",
-	["指"] = "rbxassetid://507770453",
-	["大笑"] = "rbxassetid://507770818",
-	["坐下"] = "rbxassetid://507771019",
-	["啦啦队"] = "rbxassetid://507771955",
-	["鼓掌"] = "rbxassetid://507770453",
+	{ n = "挥手", id = "rbxassetid://507770239" },
+	{ n = "指", id = "rbxassetid://507770453" },
+	{ n = "大笑", id = "rbxassetid://507770818" },
+	{ n = "坐下", id = "rbxassetid://2506281703" },
+	{ n = "啦啦队", id = "rbxassetid://507771955" },
+	{ n = "庆祝", id = "rbxassetid://507771019" },
+	{ n = "耸肩", id = "rbxassetid://507770818" },
 }
 local function PlayEmote(id)
+	local ok = false
 	pcall(function()
-		if SV.EmoteTrack then SV.EmoteTrack:Stop() end
+		if SV.EmoteTrack then pcall(function() SV.EmoteTrack:Stop() end) end
 		local h = GetHum()
 		if not h then return end
+		if type(id) ~= "string" then return end
+		if not string.find(id, "rbxassetid") then
+			if not string.find(id, "%d") then return end
+			id = "rbxassetid://" .. tostring(id):match("%d+")
+		end
 		local an = Instance.new("Animation")
 		an.AnimationId = id
 		local tr = h:LoadAnimation(an)
 		tr:Play()
 		SV.EmoteTrack = tr
+		ok = true
 	end)
+	if not ok then Notify("动作", "播放失败，游戏可能不支持", 3) end
 end
 
 local function SetBounce(on)
@@ -2908,19 +3017,36 @@ local function SetBounce(on)
 	end)
 end
 
+local SndObj = nil
 local function PlaySoundId(id, vol)
+	local ok = false
 	pcall(function()
-		local c = LP.Character
-		if not c then return end
-		local r = c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Head") or c.PrimaryPart
-		if not r then return end
+		if SndObj then pcall(function() SndObj:Stop() SndObj:Destroy() end) end
+		SndObj = nil
+		local n = tonumber(tostring(id):match("%d+"))
+		if not n then return end
 		local snd = Instance.new("Sound")
-		snd.SoundId = "rbxassetid://" .. tostring(id)
+		snd.SoundId = "rbxassetid://" .. tostring(n)
 		snd.Volume = vol or 1
-		snd.Parent = r
+		snd.Looped = false
+		snd.Parent = SoundService or LP:WaitForChild("PlayerGui")
+		local waited = 0
+		while not snd.IsLoaded and waited < 6 do
+			task.wait(0.25)
+			waited = waited + 0.25
+		end
+		if not snd.IsLoaded then
+			snd:Destroy()
+			return
+		end
 		snd:Play()
-		task.delay(12, function() pcall(function() snd:Destroy() end) end)
+		SndObj = snd
+		ok = true
+		task.delay(math.max(snd.TimeLength, 1) + 1, function()
+			pcall(function() if SndObj == snd then snd:Destroy() SndObj = nil end end)
+		end)
 	end)
+	if not ok then Notify("音效", "播放失败，ID 可能无效或未过审", 3) end
 end
 
 SafeAdd(TabFun, "Section", { Title = "ESP" })
@@ -2958,6 +3084,17 @@ SafeAdd(TabFun, "Dropdown", {
 		if type(op) == "table" then pick = op[1] or op.Value end
 		local map = { ["自动识别"] = 0, ["统一黄色"] = 1, ["队友绿/敌人红"] = 2 }
 		if map[pick] then SV.EspColorMode = map[pick] end
+	end,
+})
+SafeAdd(TabFun, "Slider", {
+	Title = "射线粗细",
+	Desc = "1 - 6 像素",
+	Value = { Min = 1, Max = 6, Default = 2 },
+	Step = 1,
+	Range = { 1, 6 },
+	CurrentValue = 2,
+	Callback = function(val)
+		if type(val) == "number" then SV.EspRayW = val end
 	end,
 })
 SafeAdd(TabFun, "Slider", {
@@ -3030,13 +3167,24 @@ TabFun:Toggle({
 	Callback = function(state) SetBounce(state) end,
 })
 SafeAdd(TabFun, "Section", { Title = "表情动作" })
-for label, aid in pairs(EMOTE_IDS) do
+for _, it in ipairs(EMOTE_IDS) do
 	SafeAdd(TabFun, "Button", {
-		Title = label,
+		Title = it.n,
 		Desc = "播放动作",
-		Callback = function() PlayEmote(aid) end,
+		Callback = function() PlayEmote(it.id) end,
 	})
 end
+SafeAdd(TabFun, "Input", {
+	Title = "自定义动作 ID",
+	Desc = "输入动画 ID，回车播放",
+	Placeholder = "例如 507770239",
+	Callback = function(txt)
+		pcall(function()
+			local n = tostring(txt):match("%d+")
+			if n then PlayEmote(n) end
+		end)
+	end,
+})
 SafeAdd(TabFun, "Section", { Title = "音效" })
 SafeAdd(TabFun, "Input", {
 	Title = "播放音效",
