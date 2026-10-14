@@ -470,6 +470,7 @@ local FUN_LIB = {
 	{ name = "控制MPC", cat = "娱乐", code = [[loadstring(game:HttpGet("https://pastebin.com/raw/vFS0vfJa"))()]] },
 	{ name = "爬墙脚本", cat = "娱乐", desc = "重置角色恢复", code = [[loadstring(game:HttpGet("https://pastebin.com/raw/5T7KsEWy", true))()]] },
 	{ name = "伪装脚本", cat = "娱乐", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/YirdeX-Dev/scripts/refs/heads/main/伪装欺骗.lua"))()]] },
+	{ name = "神秘的脚本", cat = "娱乐", desc = "玩儿这玩意儿生理不适的别来找我😱😭", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/clemonlang/clemon_roclothes/refs/heads/main/ClemonRC.lua"))()]] },
 }
 
 local MAIN_LINK = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/Evilsvj7/zzzxxc/refs/heads/main/G2R5x%20%E8%84%9A%E6%9C%AC%E4%B8%AD%E5%BF%83.lua"))()
@@ -893,7 +894,7 @@ local function CountAir()
 	SV.IJAir = SV.IJAir + 1
 end
 
-local IJ_MODES = { "方式一 自动连跳", "方式二 空中按键跳", "方式三 冷却计数", "方式四 速度注入", "方式五 强跳注入" }
+local IJ_MODES = { "方式一 状态重置", "方式二 Jump 直写", "方式三 速度注入", "方式四 双通道", "方式五 强跳注入" }
 local IJCool = 0.12
 
 local function BindIJReset()
@@ -911,6 +912,8 @@ end
 local function StopIJ()
 	if SV.IJConn then pcall(function() SV.IJConn:Disconnect() end) end
 	SV.IJConn = nil
+	if SV.IJReqConn then pcall(function() SV.IJReqConn:Disconnect() end) end
+	SV.IJReqConn = nil
 	SV.IJAir = 0
 end
 
@@ -936,109 +939,78 @@ local function IJDoOnce(injectV)
 	end)
 end
 
-local function IJLoop(fn, interval)
-	StopIJ()
-	BindIJReset()
-	local acc = 0
-	SV.IJConn = RS.Heartbeat:Connect(function(dt)
-		if not SV.IJOn then return end
-		acc = acc + dt
-		if acc < (interval or 0.08) then return end
-		acc = 0
-		if not IJCanJump() then
-			SV.IJAir = 0
-			return
-		end
-		fn()
-	end)
-end
 
-SV.applyIJ[1] = function(hum, v)
+local function BindIJ(fn)
 	StopIJ()
 	BindIJReset()
-	SV.IJConn = RS.Heartbeat:Connect(function()
-		if not SV.IJOn or SV.IJMode ~= 1 then return end
-		pcall(function()
-			local h = GetHum()
-			if not h then return end
-			if h:GetState() == Enum.HumanoidStateType.Dead then return end
-			if tick() - (SV.IJLast or 0) < 0.25 then return end
-			SV.IJLast = tick()
-			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
-			local r = GetRoot()
-			if r then
-				local cur = r.AssemblyLinearVelocity
-				if cur.Y < v * 0.5 then
-					r.AssemblyLinearVelocity = Vector3.new(cur.X, v, cur.Z)
-				end
-			end
+	SV.IJReqConn = nil
+	pcall(function()
+		SV.IJReqConn = UIS.JumpRequest:Connect(function()
+			if not SV.IJOn then return end
+			if not IJCanJump() then return end
+			CountAir()
+			fn()
 		end)
 	end)
 end
 
+SV.applyIJ[1] = function(hum, v)
+	BindIJ(function()
+		IJDoOnce(0)
+	end)
+end
 
 SV.applyIJ[2] = function(hum, v)
-	IJLoop(function()
-		local h = GetHum()
-		if not h then return end
-		if IsGrounded(h) then
-			SV.IJAir = SV.IJAir + 1
-			pcall(function()
-				if h.Jump ~= true then h.Jump = true end
-			end)
-		end
-	end, 0.05)
+	BindIJ(function()
+		pcall(function()
+			local h = GetHum()
+			if not h then return end
+			pcall(function() h.PlatformStand = false end)
+			if h.Jump ~= true then h.Jump = true end
+		end)
+	end)
 end
 
 SV.applyIJ[3] = function(hum, v)
-	IJLoop(function()
-		local h = GetHum()
-		if not h then return end
-		if IsGrounded(h) then
-			SV.IJAir = SV.IJAir + 1
-			IJDoOnce(v)
-		end
-	end, 0.06)
-end
-
-SV.applyIJ[4] = function(hum, v)
-	IJLoop(function()
-		local h = GetHum()
-		if not h then return end
-		if IsGrounded(h) then
-			SV.IJAir = SV.IJAir + 1
-			pcall(function() h.Jump = true end)
-			IJDoOnce(v)
-		end
-	end, 0.05)
-end
-
-SV.applyIJ[5] = function(hum, v)
-	StopIJ()
-	BindIJReset()
-	local acc = 0
-	SV.IJConn = RS.Heartbeat:Connect(function(dt)
-		if not SV.IJOn then return end
-		acc = acc + dt
-		if acc < 0.03 then return end
-		acc = 0
-		if not IJCanJump() then SV.IJAir = 0 return end
+	BindIJ(function()
 		pcall(function()
 			local h = GetHum()
 			local r = GetRoot()
 			if not (h and r) then return end
-			if h:GetState() == Enum.HumanoidStateType.Dead then return end
-			h.PlatformStand = false
-			h.Jump = true
-			h:ChangeState(Enum.HumanoidStateType.Jumping)
-			if IsGrounded(h) then
-				SV.IJAir = SV.IJAir + 1
-				task.wait(0.01)
-				h:ChangeState(Enum.HumanoidStateType.Jumping)
-				r.AssemblyLinearVelocity = Vector3.new(
-					r.AssemblyLinearVelocity.X, v, r.AssemblyLinearVelocity.Z
-				)
-			end
+			pcall(function() h.PlatformStand = false end)
+			local cur = r.AssemblyLinearVelocity
+			r.AssemblyLinearVelocity = Vector3.new(cur.X, v, cur.Z)
+		end)
+	end)
+end
+
+SV.applyIJ[4] = function(hum, v)
+	BindIJ(function()
+		pcall(function()
+			local h = GetHum()
+			local r = GetRoot()
+			if not (h and r) then return end
+			pcall(function() h.PlatformStand = false end)
+			if h.Jump ~= true then h.Jump = true end
+			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
+			local cur = r.AssemblyLinearVelocity
+			r.AssemblyLinearVelocity = Vector3.new(cur.X, v, cur.Z)
+		end)
+	end)
+end
+
+SV.applyIJ[5] = function(hum, v)
+	BindIJ(function()
+		pcall(function()
+			local h = GetHum()
+			local r = GetRoot()
+			if not (h and r) then return end
+			pcall(function() h.PlatformStand = false end)
+			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
+			if h.Jump ~= true then h.Jump = true end
+			local cur = r.AssemblyLinearVelocity
+			local nv = (v > 0) and v or 50
+			r.AssemblyLinearVelocity = Vector3.new(cur.X, math.max(cur.Y, nv), cur.Z)
 		end)
 	end)
 end
@@ -1581,7 +1553,7 @@ TabLocal:Toggle({
 			MarkManual("ij")
 			DoIJ()
 			IJWatch()
-			Notify("本地修改", "无限跳跃已开启（空中按跳跃键）", 3)
+			Notify("本地修改", "无限跳跃已开启（按跳跃键，空中也能跳）", 3)
 		else
 			StopIJ()
 			StOf("ij").dead = false
@@ -1606,7 +1578,7 @@ SafeAdd(TabLocal, "Slider", {
 })
 SafeAdd(TabLocal, "Slider", {
 	Title = "空中连跳上限",
-	Desc = "0 = 无限跳；仅方式二生效",
+	Desc = "0 = 无限；N = 空中最多跳 N 次",
 	Value = { Min = 0, Max = 20, Default = 0 },
 	Step = 1,
 	Range = { 0, 20 },
@@ -1841,17 +1813,6 @@ local function ScanStamina()
 	end
 end
 
-local StamNames = { "stamina", "stam", "energy", "mana", "体力", "耐力", "能量" }
-local function IsStamObj(d)
-	local n = string.lower(d.Name)
-	for _, k in ipairs(StamNames) do
-		if string.find(n, k) then return true end
-	end
-	return false
-end
-
-local InfStam = false
-local StamConn = nil
 local function SetInfStamina(on)
 	InfStam = on
 	if StamConn then pcall(function() StamConn:Disconnect() end) StamConn = nil end
@@ -3447,7 +3408,13 @@ local function BuildInlineSearch(tab)
 		local q = tostring(box.Text or "")
 		if q == "" then return end
 		local hits = {}
-		for _, e in ipairs(SCRIPT_LIB) do
+		local pool = {}
+		for _, e in ipairs(SCRIPT_LIB) do pool[#pool + 1] = e end
+		for _, e in ipairs(FUN_LIB) do
+			if not e.cat then e.cat = "娱乐" end
+			pool[#pool + 1] = e
+		end
+		for _, e in ipairs(pool) do
 			local sc = ScoreMatch(e.name, q)
 			if sc then hits[#hits + 1] = { e = e, sc = sc } end
 		end
