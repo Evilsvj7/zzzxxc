@@ -35,7 +35,7 @@ local SV = {}
 	SV.IJLast = 0
 	SV.IJAuto = true
 	SV.IJOn = false
-	SV.IJVal = 50
+	SV.IJVal = 75
 	SV.IJConn = nil
 	SV.IJAir = 0
 	SV.IJMax = 0
@@ -464,6 +464,7 @@ loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/d6c11700
 	{ name = "安脚本中心", cat = "脚本中心", code = [[loadstring(game:HttpGet(('https://raw.githubusercontent.com/wucan114514/gegeyxjb/main/oww')))()]] },
 	{ name = "BS黑洞中心", cat = "脚本中心", code = [[loadstring(game:HttpGet("https://gitee.com/BS_script/script/raw/master/BS_Script.Luau"))()]] },
 	{ name = "情云脚本中心", cat = "脚本中心", code = [[loadstring(utf8.char((function() return table.unpack({108,111,97,100,115,116,114,105,110,103,40,103,97,109,101,58,72,116,116,112,71,101,116,40,34,104,116,116,112,115,58,47,47,114,97,119,46,103,105,116,104,117,98,117,115,101,114,99,111,110,116,101,110,116,46,99,111,109,47,67,104,105,110,97,81,89,47,45,47,109,97,105,110,47,37,69,54,37,56,51,37,56,53,37,69,52,37,66,65,37,57,49,34,41,41,40,41})end)()))()]] },
+	{ name = "NH脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/qweroot/NH-NM-HUB/main/NH%20HUB"))()]] },
 }
 
 local FUN_LIB = {
@@ -887,15 +888,12 @@ local function IsGrounded(h)
 	if fm ~= nil and fm ~= Enum.Material.Air then return true end
 	return false
 end
-local function IJAirCap()
-	return (SV.IJMax > 0) and (SV.IJAir >= SV.IJMax)
-end
+
 local function CountAir()
 	SV.IJAir = SV.IJAir + 1
 end
 
 local IJ_MODES = { "方式一 状态重置", "方式二 Jump 直写", "方式三 速度注入", "方式四 双通道", "方式五 强跳注入" }
-local IJCool = 0.12
 
 local function BindIJReset()
 	if SV.IJStateConn then pcall(function() SV.IJStateConn:Disconnect() end) end
@@ -914,49 +912,88 @@ local function StopIJ()
 	SV.IJConn = nil
 	if SV.IJReqConn then pcall(function() SV.IJReqConn:Disconnect() end) end
 	SV.IJReqConn = nil
+	if SV.IJPollConn then pcall(function() SV.IJPollConn:Disconnect() end) end
+	SV.IJPollConn = nil
 	SV.IJAir = 0
 end
-
 
 local function IJCanJump()
 	if SV.IJMax <= 0 then return true end
 	return SV.IJAir < SV.IJMax
 end
 
-local function IJDoOnce(injectV)
-	pcall(function()
-		local h = GetHum()
-		local r = GetRoot()
-		if not (h and r) then return end
-		if h:GetState() == Enum.HumanoidStateType.Dead then return end
-		pcall(function() h.PlatformStand = false end)
-		pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
-		if injectV and injectV > 0 then
-			r.AssemblyLinearVelocity = Vector3.new(
-				r.AssemblyLinearVelocity.X, injectV, r.AssemblyLinearVelocity.Z
-			)
-		end
+local function IJAfterJump()
+	task.delay(0.15, function()
+		pcall(function()
+			local r = GetRoot()
+			if not r then return end
+			SV.IJVy = r.AssemblyLinearVelocity.Y
+			SV.IJTested = true
+		end)
 	end)
 end
 
+local IJLastJumpFlag = false
+
+local function IJFire(fn)
+	if not SV.IJOn then return end
+	if (tick() - (SV.IJLastT or 0)) < 0.12 then return end
+	if not IJCanJump() then return end
+	SV.IJLastT = tick()
+	CountAir()
+	fn()
+	IJAfterJump()
+end
+
+local function IJInject(r, v)
+	if not (r and v) then return end
+	local nv = v
+	if not nv or nv <= 0 then nv = 50 end
+	pcall(function()
+		local cur = r.AssemblyLinearVelocity
+		if cur.Y < nv * 0.8 then
+			r.AssemblyLinearVelocity = Vector3.new(cur.X, nv, cur.Z)
+		end
+	end)
+end
 
 local function BindIJ(fn)
 	StopIJ()
 	BindIJReset()
 	SV.IJReqConn = nil
+	SV.IJPollConn = nil
 	pcall(function()
 		SV.IJReqConn = UIS.JumpRequest:Connect(function()
+			IJFire(fn)
+		end)
+	end)
+	pcall(function()
+		SV.IJPollConn = RS.Heartbeat:Connect(function()
 			if not SV.IJOn then return end
-			if not IJCanJump() then return end
-			CountAir()
-			fn()
+			local h = GetHum()
+			if not h then return end
+			local j = false
+			pcall(function() j = h.Jump end)
+			if j and not IJLastJumpFlag then IJFire(fn) end
+			IJLastJumpFlag = j or false
+			if SV.IJAir > 0 then
+				if IsGrounded(h) then SV.IJAir = 0 end
+			end
 		end)
 	end)
 end
 
 SV.applyIJ[1] = function(hum, v)
 	BindIJ(function()
-		IJDoOnce(0)
+		pcall(function()
+			local h = GetHum()
+			local r = GetRoot()
+			if not (h and r) then return end
+			if h:GetState() == Enum.HumanoidStateType.Dead then return end
+			pcall(function() h.PlatformStand = false end)
+			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
+			IJInject(r, v)
+		end)
 	end)
 end
 
@@ -964,9 +1001,12 @@ SV.applyIJ[2] = function(hum, v)
 	BindIJ(function()
 		pcall(function()
 			local h = GetHum()
-			if not h then return end
+			local r = GetRoot()
+			if not (h and r) then return end
+			if h:GetState() == Enum.HumanoidStateType.Dead then return end
 			pcall(function() h.PlatformStand = false end)
 			if h.Jump ~= true then h.Jump = true end
+			IJInject(r, v)
 		end)
 	end)
 end
@@ -977,9 +1017,12 @@ SV.applyIJ[3] = function(hum, v)
 			local h = GetHum()
 			local r = GetRoot()
 			if not (h and r) then return end
+			if h:GetState() == Enum.HumanoidStateType.Dead then return end
 			pcall(function() h.PlatformStand = false end)
-			local cur = r.AssemblyLinearVelocity
-			r.AssemblyLinearVelocity = Vector3.new(cur.X, v, cur.Z)
+			pcall(function()
+				local cur = r.AssemblyLinearVelocity
+				r.AssemblyLinearVelocity = Vector3.new(cur.X, v, cur.Z)
+			end)
 		end)
 	end)
 end
@@ -990,11 +1033,14 @@ SV.applyIJ[4] = function(hum, v)
 			local h = GetHum()
 			local r = GetRoot()
 			if not (h and r) then return end
+			if h:GetState() == Enum.HumanoidStateType.Dead then return end
 			pcall(function() h.PlatformStand = false end)
 			if h.Jump ~= true then h.Jump = true end
 			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
-			local cur = r.AssemblyLinearVelocity
-			r.AssemblyLinearVelocity = Vector3.new(cur.X, v, cur.Z)
+			pcall(function()
+				local cur = r.AssemblyLinearVelocity
+				r.AssemblyLinearVelocity = Vector3.new(cur.X, v, cur.Z)
+			end)
 		end)
 	end)
 end
@@ -1005,12 +1051,17 @@ SV.applyIJ[5] = function(hum, v)
 			local h = GetHum()
 			local r = GetRoot()
 			if not (h and r) then return end
+			if h:GetState() == Enum.HumanoidStateType.Dead then return end
 			pcall(function() h.PlatformStand = false end)
+			pcall(function()
+				if h.UseJumpPower ~= true then h.UseJumpPower = true end
+				local nv = v
+				if not nv or nv <= 0 then nv = 50 end
+				if h.JumpPower ~= nv then h.JumpPower = nv end
+			end)
 			pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end)
 			if h.Jump ~= true then h.Jump = true end
-			local cur = r.AssemblyLinearVelocity
-			local nv = (v > 0) and v or 50
-			r.AssemblyLinearVelocity = Vector3.new(cur.X, math.max(cur.Y, nv), cur.Z)
+			IJInject(r, v)
 		end)
 	end)
 end
@@ -1333,7 +1384,11 @@ local function TestJump(mode)
 end
 
 local function TestIJ(mode)
-	return true
+	if not SV.IJTested then return true end
+	SV.IJTested = false
+	local vy = SV.IJVy
+	if vy == nil then return true end
+	return vy > 2
 end
 
 local function TestNC(mode)
@@ -3247,17 +3302,32 @@ SafeAdd(TabAbout, "Paragraph", {
 })
 
 --------------------------------------------------------------------------------
--- 最近运行（最多 3 条）
+-- 最近运行（默认最多 10 条，可设置）
 --------------------------------------------------------------------------------
 task.spawn(function()
 	local saved = SV.FS.Load("recent")
 	if type(saved) == "table" then
-		for _, nm in ipairs(saved) do
-			for _, e in ipairs(SCRIPT_LIB) do
-				if e.name == nm then SV.RECENT[#SV.RECENT + 1] = e break end
-			end
-			for _, e in ipairs(FUN_LIB) do
-				if e.name == nm then SV.RECENT[#SV.RECENT + 1] = e break end
+		for _, it in ipairs(saved) do
+			local nm = it
+			if type(it) == "table" then nm = it.name end
+			if type(nm) == "string" then
+				local hit = nil
+				for _, e in ipairs(SCRIPT_LIB) do
+					if e.name == nm then hit = e break end
+				end
+				if not hit then
+					for _, e in ipairs(FUN_LIB) do
+						if e.name == nm then hit = e break end
+					end
+				end
+				if hit then
+					if not hit.cat then hit.cat = "娱乐" end
+					local dup = false
+					for _, x in ipairs(SV.RECENT) do
+						if x.name == nm then dup = true break end
+					end
+					if not dup then SV.RECENT[#SV.RECENT + 1] = hit end
+				end
 			end
 			if #SV.RECENT >= (CFG.recentMax or 10) then break end
 		end
@@ -4057,7 +4127,9 @@ SafeAdd(TabSet, "Slider", {
 			CFG.recentMax = val
 			SaveCfg()
 			while #SV.RECENT > CFG.recentMax do table.remove(SV.RECENT, #SV.RECENT) end
-			SV.FS.Save("recent", SV.RECENT)
+			local ns = {}
+			for _, e in ipairs(SV.RECENT) do ns[#ns + 1] = e.name end
+			SV.FS.Save("recent", ns)
 			pcall(RefreshRecent)
 		end
 	end,
