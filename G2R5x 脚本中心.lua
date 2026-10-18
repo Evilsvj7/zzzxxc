@@ -35,7 +35,7 @@ local SV = {}
 	SV.IJLast = 0
 	SV.IJAuto = true
 	SV.IJOn = false
-	SV.IJVal = 75
+	SV.IJVal = 50
 	SV.IJConn = nil
 	SV.IJAir = 0
 	SV.IJMax = 0
@@ -453,7 +453,6 @@ local SCRIPT_LIB = {
 	{ name = "Atomic脚本免费版", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/123fa98/Xi_Pro/refs/heads/main/Atomic-Script"))()]] },
 	{ name = "RT脚本免费版", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://gitee.com/founder-of-xt/rt-script-1/raw/master/script.lua",true))()]] },
 	{ name = "星脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/zilinskaslandon/XingJiaoBen-2026-/refs/heads/main/%E6%98%9F%E8%84%9A%E6%9C%AC.lua"))()]] },
-	{ name = "试炼", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/xiaowanghencai/Shilian/master/shilian_obfuscate.lua"))()]] },
 	{ name = "圣奥里", cat = "普通脚本", desc = "可能需要翻译因为这是英文", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/idkidevthings/improved-octo-chainsaw/refs/heads/main/sanx.lua"))()]] },
 	{ name = "黑白脚本", cat = "普通脚本", code = [[loadstring(game:HttpGet('https://raw.githubusercontent.com/tfcygvunbind/Apple/main/黑白脚本加载器'))()]] },
 	{ name = "黑白脚本轻量版", cat = "普通脚本", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/tfcygvunbind/557/main/黑白脚本轻"))()]] },
